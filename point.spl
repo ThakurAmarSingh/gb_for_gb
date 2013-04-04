@@ -1,0 +1,458 @@
+DEFINE GROUPING sysobs
+  LABEL   'System-Level Observation'
+	TYPE    CUBE
+	OBJECT  OBS
+	#CDIMS   (obs_subject)
+	ODIMS   (:SYS, :SYS STATE)
+	DDIMS   (obs_week, obs_day, obs_hour, obs_10min)
+	IND     obs_sysobs
+;
+
+DEFINE GROUPING	memlt 
+        LABEL   'Memory latency Stats'
+        TYPE    CUBE
+        OBJECT  MEMLET
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(memlet_severity,memlet_label)
+        DDIMS 	(memlet_qtr, memlet_30day ,memlet_month, memlet_week, memlet_day, memlet_hour, memlet_10min)
+	IND     memlet_memlet 
+;
+
+DEFINE GROUPING cpuutil
+        LABEL   'CPU Utilisation Stats'
+        TYPE    CUBE
+        OBJECT	EVT 
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(evt_severity,evt_label)
+        DDIMS 	(evt_qtr, evt_30day ,evt_month, evt_week, evt_day, evt_hour, evt_10min)
+	IND     evt_evt 
+;
+
+DEFINE GROUPING memut 
+	LABEL   'Memory-Infomation'
+	TYPE    CUBE
+	OBJECT  MEMUTLI
+	ODIMS  (:SYS, :SYS STATE)
+	#CDIMS	(memutli_severity,memutli_label)
+	DDIMS 	(memutli_qtr, memutli_30day ,memutli_month, memutli_week, memutli_day, memutli_hour, memutli_10min)
+	IND     memutli_memutli
+;
+
+DEFINE GROUPING netlt 
+	LABEL   'Network-Infomation'
+	TYPE    CUBE
+	OBJECT  NETLET
+	ODIMS  (:SYS, :SYS STATE)
+	#CDIMS	(netlet_severity,netlet_label)
+	DDIMS 	(netlet_qtr, netlet_30day ,netlet_month, netlet_week, netlet_day, netlet_hour, netlet_10min)
+	IND     netlet_netlet
+;
+
+
+DEFINE GROUPING iostgr
+        LABEL   'IO Stats'
+        TYPE    CUBE
+        OBJECT  IOST
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(iost_severity,iost_label)
+        DDIMS 	(iost_qtr, iost_30day ,iost_month, iost_week, iost_day, iost_hour, iost_10min)
+	IND     iost_iost 
+;
+
+DEFINE GROUPING netdrep 
+        LABEL   'Network Dev Report'
+        TYPE    CUBE
+        OBJECT  NETREP
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(netrep_severity,netrep_label)
+        DDIMS 	(netrep_qtr, netrep_30day ,netrep_month, netrep_week, netrep_day, netrep_hour, netrep_10min)
+	IND     netrep_netrep 
+;
+
+DEFINE GROUPING vmgr 
+        LABEL   'VMSTAT'
+        TYPE    CUBE
+        OBJECT  VMSTAT
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(vmstat_severity,vmstat_label)
+        DDIMS 	(vmstat_qtr, vmstat_30day ,vmstat_month, vmstat_week, vmstat_day, vmstat_hour, vmstat_10min)
+	IND     vmstat_vmstat 
+;
+
+DEFINE GROUPING swpgr 
+        LABEL   'SWP Data'
+        TYPE    CUBE
+        OBJECT  SWP
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(swp_severity,swp_label)
+        DDIMS 	(swp_qtr, swp_30day ,swp_month, swp_week, swp_day, swp_hour, swp_10min)
+	IND     swp_swp 
+;
+
+DEFINE GROUPING dwpgr 
+        LABEL   'SWP Data'
+        TYPE    CUBE
+        OBJECT  DWP
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(dwp_severity,dwp_label)
+        DDIMS 	(dwp_qtr, dwp_30day ,dwp_month, dwp_week, dwp_day, dwp_hour, dwp_10min)
+	IND     dwp_dwp 
+;
+
+DEFINE GROUPING isbgr 
+        LABEL   'SWP Data'
+        TYPE    CUBE
+        OBJECT  ISB
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(isb_severity,isb_label)
+        DDIMS 	(isb_qtr, isb_30day ,isb_month, isb_week, isb_day, isb_hour, isb_10min)
+	IND     isb_isb 
+;
+
+DEFINE GROUPING sckgr 
+        LABEL   'SWP Data'
+        TYPE    CUBE
+        OBJECT  SCK
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(sck_severity,sck_label)
+        DDIMS 	(sck_qtr, sck_30day ,sck_month, sck_week, sck_day, sck_hour, sck_10min)
+	IND     sck_sck 
+;
+
+DEFINE GROUPING proldgr 
+        LABEL   'SWP Data'
+        TYPE    CUBE
+        OBJECT  PROLD
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(prold_severity,prold_label)
+        DDIMS 	(prold_qtr, prold_30day ,prold_month, prold_week, prold_day, prold_hour, prold_10min)
+	IND     prold_prold 
+;
+
+DEFINE GROUPING apcgr 
+        LABEL   'APC Info'
+        TYPE    CUBE
+        OBJECT  APC
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(apc_severity,apc_label)
+        DDIMS 	(apc_qtr, apc_30day ,apc_month, apc_week, apc_day, apc_hour, apc_10min)
+	IND     apc_apc 
+;
+
+DEFINE GROUPING mgegr 
+        LABEL   'MySQL Info'
+        TYPE    CUBE
+        OBJECT MSGEN 
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(msgen_severity,msgen_label)
+        DDIMS 	(msgen_qtr, msgen_30day ,msgen_month, msgen_week, msgen_day, msgen_hour, msgen_10min)
+	IND     msgen_msgen 
+;
+
+DEFINE GROUPING mgegr 
+        LABEL   'MySQL Info'
+        TYPE    CUBE
+        OBJECT MSGEN 
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(msgen_severity,msgen_label)
+        DDIMS 	(msgen_qtr, msgen_30day ,msgen_month, msgen_week, msgen_day, msgen_hour, msgen_10min)
+	IND     msgen_msgen 
+;
+
+DEFINE GROUPING mrepgr 
+        LABEL   'MySQL Report'
+        TYPE    CUBE
+        OBJECT MREP
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(mrep_severity,mrep_label)
+        DDIMS 	(mrep_qtr, mrep_30day ,mrep_month, mrep_week, mrep_day, mrep_hour, mrep_10min)
+	IND     mrep_mrep 
+;
+
+DEFINE GROUPING slwgr 
+        LABEL   'MySQL Slow Query'
+        TYPE    CUBE
+        OBJECT SLW
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(slw_severity,slw_label)
+        DDIMS 	(slw_qtr, slw_30day ,slw_month, slw_week, slw_day, slw_hour, slw_10min)
+	IND     slw_slw 
+;
+
+DEFINE GROUPING mbingr 
+        LABEL   'MSQL Binary Query'
+        TYPE    CUBE
+        OBJECT MBIN
+        ODIMS   (:SYS, :SYS STATE)
+	#CDIMS	(mbin_severity,mbin_label)
+        DDIMS 	(mbin_qtr, mbin_30day ,mbin_month, mbin_week, mbin_day, mbin_hour, mbin_10min)
+	IND     mbin_mbin 
+;
+
+###################################### POINT DEF ##################################
+
+DEFINE POINT OBS
+	LABEL 'Linux Observations'
+	DIMENSION       TIME
+	COORDINATE      (obs_qtr, obs_30day, obs_month, obs_week, obs_day, obs_hour, obs_10min, obs_epoch, obs_idx)
+	KEY             (obs_id_name)
+	UNIQUE          (:SYS, :TIME)
+	#ACCESS
+#		PROJECTED ON    (obs_week PERIODIC, obs_day PERIODIC, obs_hour PERIODIC, obs_subject, :SYS, obs_date_str, obs_url)
+	#	KEYED BY        (:SYS, obs_log_min_epoch, obs_log_max_epoch)
+#		PROJECTED ON    (obs_week PERIODIC, obs_day PERIODIC, obs_hour PERIODIC,  obs_subject, :SYS, obs_date_str, obs_url)
+	#	KEYED BY        (:SYS, obs_epoch, obs_idx)
+	DATA
+		TYPE            SNAPSHOT_COMPLETE
+		BASIS           :OBS
+		TIME            (obs_qtr, obs_30day, obs_month, obs_week, obs_day, obs_hour, obs_10min, obs_epoch, obs_idx)
+		SOURCE          (host)
+		#SOURCE          (loginfo * host)
+;
+
+DEFINE POINT	EVT 
+        LABEL 'CPU Data'
+        DIMENSION       TIME
+	COORDINATE      (evt_qtr, evt_30day ,evt_month, evt_week, evt_day, evt_hour, evt_10min, evt_epoch, evt_idx)
+        KEY             (:SYS, evt_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :EVT
+                TIME            (evt_qtr,evt_30day ,evt_month, evt_week, evt_day, evt_hour, evt_10min, evt_epoch, evt_idx)
+                SOURCE          (evt_proto * host)
+;
+
+DEFINE POINT MEMUTLI 
+	LABEL 'Memory Utilization'
+	DIMENSION       TIME
+	COORDINATE      (memutli_qtr, memutli_30day ,memutli_month, memutli_week, memutli_day, memutli_hour, memutli_10min, memutli_epoch, memutli_idx)
+	KEY             (:SYS, memutli_md5)
+	UNIQUE          (:TIME)
+	#BULK LOADABLE
+	DATA
+		TYPE            SNAPSHOT_COMPLETE
+		BASIS           :MEMUTLI
+		TIME            (memutli_qtr,memutli_30day ,memutli_month, memutli_week, memutli_day, memutli_hour, memutli_10min, memutli_epoch, memutli_idx)
+		SOURCE          (mem_util_proto * host)
+;
+
+DEFINE POINT MEMLET 
+        LABEL 'MEMORY LATENCY'
+        DIMENSION       TIME
+	COORDINATE      (memlet_qtr, memlet_30day ,memlet_month, memlet_week, memlet_day, memlet_hour, memlet_10min, memlet_epoch, memlet_idx)
+        KEY             (:SYS, memlet_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :MEMLET
+                TIME            (memlet_qtr,memlet_30day ,memlet_month, memlet_week, memlet_day, memlet_hour, memlet_10min, memlet_epoch, memlet_idx)
+                SOURCE          (lx_memlat_proto * host)
+;
+
+DEFINE POINT NETLET 
+        LABEL 'NETWORK LATENCY'
+        DIMENSION       TIME
+	COORDINATE      (netlet_qtr, netlet_30day ,netlet_month, netlet_week, netlet_day, netlet_hour, netlet_10min, netlet_epoch, netlet_idx)
+        KEY             (:SYS, netlet_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :NETLET
+                TIME            (netlet_qtr,netlet_30day ,netlet_month, netlet_week, netlet_day, netlet_hour, netlet_10min, netlet_epoch, netlet_idx)
+                SOURCE          (lx_netlat * host)
+;
+
+DEFINE POINT IOST 
+        LABEL 'IOSTAT Data'
+        DIMENSION       TIME
+	COORDINATE      (iost_qtr, iost_30day ,iost_month, iost_week, iost_day, iost_hour, iost_10min, iost_epoch, iost_idx)
+        KEY             (:SYS, iost_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :IOST
+                TIME            (iost_qtr,iost_30day ,iost_month, iost_week, iost_day, iost_hour, iost_10min, iost_epoch, iost_idx)
+                SOURCE          (iostat * host)
+;
+
+DEFINE POINT NETREP 
+	LABEL 'Network Devices Statistics'
+	DIMENSION       TIME
+	COORDINATE      (netrep_qtr, netrep_30day ,netrep_month, netrep_week, netrep_day, netrep_hour, netrep_10min, netrep_epoch, netrep_idx)
+        KEY		(:SYS, netrep_md5)
+        UNIQUE		(:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :NETREP
+                TIME            (netrep_qtr,netrep_30day ,netrep_month, netrep_week, netrep_day, netrep_hour, netrep_10min, netrep_epoch, netrep_idx)
+                SOURCE          (network_rep * host)
+
+;
+
+DEFINE POINT VMSTAT 
+        LABEL 'VMSTAT Data'
+        DIMENSION       TIME
+	COORDINATE      (vmstat_qtr, vmstat_30day ,vmstat_month, vmstat_week, vmstat_day, vmstat_hour, vmstat_10min, vmstat_epoch, vmstat_idx)
+        KEY             (:SYS, vmstat_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :VMSTAT
+                TIME            (vmstat_qtr,vmstat_30day ,vmstat_month, vmstat_week, vmstat_day, vmstat_hour, vmstat_10min, vmstat_epoch, vmstat_idx)
+                SOURCE          (vmstat * host)
+;
+
+
+
+DEFINE POINT SWP 
+        LABEL 'Swap pgs taken in/out per sec'
+        DIMENSION       TIME
+	COORDINATE      (swp_qtr, swp_30day ,swp_month, swp_week, swp_day, swp_hour, swp_10min, swp_epoch, swp_idx)
+        KEY             (:SYS, swp_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :SWP
+                TIME            (swp_qtr,swp_30day ,swp_month, swp_week, swp_day, swp_hour, swp_10min, swp_epoch, swp_idx)
+                SOURCE          (swp_pgs * host)
+;
+
+DEFINE POINT DWP 
+        LABEL 'Rd and Wr req & blks per sec'
+        DIMENSION       TIME
+	COORDINATE      (dwp_qtr, dwp_30day ,dwp_month, dwp_week, dwp_day, dwp_hour, dwp_10min, dwp_epoch, dwp_idx)
+        KEY             (:SYS, dwp_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :DWP
+                TIME            (dwp_qtr,dwp_30day ,dwp_month, dwp_week, dwp_day, dwp_hour, dwp_10min, dwp_epoch, dwp_idx)
+                SOURCE          (dwps * host)
+;
+
+DEFINE POINT ISB 
+        LABEL 'Inode, file and super block used'
+        DIMENSION       TIME
+	COORDINATE      (isb_qtr, isb_30day ,isb_month, isb_week, isb_day, isb_hour, isb_10min, isb_epoch, isb_idx)
+        KEY             (:SYS, isb_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :ISB
+                TIME            (isb_qtr,isb_30day ,isb_month, isb_week, isb_day, isb_hour, isb_10min, isb_epoch, isb_idx)
+                SOURCE          (inode_sb * host)
+;
+
+
+DEFINE POINT SCK 
+        LABEL 'Number of sockets and its breakup'
+        DIMENSION       TIME
+	COORDINATE      (sck_qtr, sck_30day ,sck_month, sck_week, sck_day, sck_hour, sck_10min, sck_epoch, sck_idx)
+        KEY             (:SYS, sck_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :SCK
+                TIME            (sck_qtr,sck_30day ,sck_month, sck_week, sck_day, sck_hour, sck_10min, sck_epoch, sck_idx)
+                SOURCE          (sck_bk * host)
+;
+
+DEFINE POINT PROLD 
+        LABEL 'Processes load info'
+        DIMENSION       TIME
+	COORDINATE      (prold_qtr, prold_30day ,prold_month, prold_week, prold_day, prold_hour, prold_10min, prold_epoch, prold_idx)
+        KEY             (:SYS, prold_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :PROLD
+                TIME            (prold_qtr,prold_30day ,prold_month, prold_week, prold_day, prold_hour, prold_10min, prold_epoch, prold_idx)
+                SOURCE          (process_ld_time * host)
+;
+
+DEFINE POINT APC 
+        LABEL 'Apache Log Data'
+        DIMENSION       TIME
+	COORDINATE      (apc_qtr, apc_30day ,apc_month, apc_week, apc_day, apc_hour, apc_10min, apc_epoch, apc_idx)
+        KEY             (:SYS, apc_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :APC
+                TIME            (apc_qtr,apc_30day ,apc_month, apc_week, apc_day, apc_hour, apc_10min, apc_epoch, apc_idx)
+                SOURCE          (apc_table * host)
+
+;
+
+DEFINE POINT MSGEN 
+        LABEL 'MySQL Query Info'
+        DIMENSION       TIME
+	COORDINATE      (msgen_qtr, msgen_30day ,msgen_month, msgen_week, msgen_day, msgen_hour, msgen_10min, msgen_epoch, msgen_idx)
+        KEY             (:SYS, msgen_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :MSGEN
+                TIME            (msgen_qtr,msgen_30day ,msgen_month, msgen_week, msgen_day, msgen_hour, msgen_10min, msgen_epoch, msgen_idx)
+                SOURCE          (msql_tb * host)
+;
+
+DEFINE POINT MREP 
+        LABEL 'My SQL Report'
+        DIMENSION       TIME
+	COORDINATE      (mrep_qtr, mrep_30day ,mrep_month, mrep_week, mrep_day, mrep_hour, mrep_10min, mrep_epoch, mrep_idx)
+        KEY             (:SYS, mrep_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :MREP
+                TIME            (mrep_qtr,mrep_30day ,mrep_month, mrep_week, mrep_day, mrep_hour, mrep_10min, mrep_epoch, mrep_idx)
+                SOURCE          (mrep_proto * host)
+;
+
+
+DEFINE POINT SLW 
+        LABEL 'SQL Slow Query'
+        DIMENSION       TIME
+	COORDINATE      (slw_qtr, slw_30day ,slw_month, slw_week, slw_day, slw_hour, slw_10min, slw_epoch, slw_idx)
+        KEY             (:SYS, slw_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :SLW
+                TIME            (slw_qtr,slw_30day ,slw_month, slw_week, slw_day, slw_hour, slw_10min, slw_epoch, slw_idx)
+                SOURCE          (slow_query_tb * host)
+;
+
+
+DEFINE POINT MBIN 
+        LABEL 'MYSQL BINARY LOG'
+        DIMENSION       TIME
+	COORDINATE      (mbin_qtr, mbin_30day ,mbin_month, mbin_week, mbin_day, mbin_hour, mbin_10min, mbin_epoch, mbin_idx)
+        KEY             (:SYS, mbin_md5)
+        UNIQUE          (:TIME)
+        #BULK LOADABLE
+        DATA
+                TYPE            SNAPSHOT_COMPLETE
+                BASIS           :MBIN
+                TIME            (mbin_qtr,mbin_30day ,mbin_month, mbin_week, mbin_day, mbin_hour, mbin_10min, mbin_epoch, mbin_idx)
+                SOURCE          (msql_bin * host)
+;
+
+
