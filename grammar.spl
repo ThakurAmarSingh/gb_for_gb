@@ -1,0 +1,1725 @@
+DEFINE DIMENSION TIME
+        UNITS (
+time_qtr, time_30day, time_month, time_week, time_day, time_hour, time_10min, time_epoch, time_idx
+        )
+        PRAGMA TRACK_STATE
+                BASES (:SYS)
+;
+
+DEFINE ASPECT STATIC
+        DIMENSION       TIME
+        DURATION        ETERNAL
+        ENTROPY         HIGH
+;
+
+DEFINE ASPECT CONF
+        DIMENSION       TIME
+        DURATION        LONG
+        ENTROPY         HIGH
+;
+
+DEFINE ASPECT STATUS
+        DIMENSION       TIME
+        DURATION        LONG
+        ENTROPY         LOW
+;
+
+DEFINE ASPECT STAT
+        DIMENSION       TIME
+        DURATION        SHORT
+        ENTROPY         HIGH
+;
+
+######################################################### 
+
+DEFINE OBJECT SYS
+        LABEL   'LX'
+        SEARCH  'PREFERRED'
+        KEY     (sys_hwaddr)
+#  UNIQUE  (obs_id_name)
+        DATA
+                BASIS           :SYS
+                TYPE            SNAPSHOT_COMPLETE
+                TIME            (obs_qtr, obs_30day, obs_month, obs_week, obs_day, obs_hour, obs_10min, obs_epoch, obs_idx)
+                SOURCE          (sys_proto) 
+;
+
+###################################################### NAMESPACE ########################################################
+
+#eth0      Link encap:Ethernet  HWaddr 00:1D:7D:2B:3C:BD
+#          inet addr:192.168.2.41  Bcast:192.168.15.255  Mask:255.255.240.0
+#          inet6 addr: fe80::21d:7dff:fe2b:3cbd/64 Scope:Link
+#          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+#          RX packets:775288 errors:0 dropped:0 overruns:0 frame:0
+#          TX packets:202615 errors:0 dropped:0 overruns:0 carrier:0
+#          collisions:0 txqueuelen:1000
+#          RX bytes:286709320 (273.4 MiB)  TX bytes:26944986 (25.6 MiB)
+#          Interrupt:177 Base address:0xe000
+
+
+DEFINE NAMESPACE lin DESCRIPTION 'Linux Logs'	TYPE	SYS
+	BEGINS WITH /eth0\s+Link\s+encap\:\w+\s+HWaddr\s+\w+\:\w+\:\w+\:\w+\:\w+\:\w+/
+	ENDS WITH /\_SPL\_END\_OF\_FILE\_/
+	CONTEXT /eth0\s+Link\s+encap\:\w+\s+HWaddr\s+(\w+\:\w+\:\w+\:\w+\:\w+\:\w+)/
+	AS	sys_hwaddr
+;
+
+#SAMPLE DATA
+#Date
+#----
+#sys_utcdate: Wed Feb 27 16:49:25 UTC 2013
+#sys_hostdate: Wed Feb 27 22:19:25 IST 2013
+#sys_epoch: 1361983765
+#sys_timezone: +0530
+
+DEFINE NAMESPACE lin.dt	DESCRIPTION 'Linux Date'	REF lin
+	BEGINS WITH /Linux\s+Date\s+and\s+Time[^\n]*\n\-+[^\n]*\nsys_utcdate\:\s*[^\n]*\nsys_hostdate\:\s*[^\n]*\nsys_epoch\:\s*[^\n]*\nsys_timezone\:\s*[^\n]*/
+	CONTEXT /Linux\s+Date\s+and\s+Time[^\n]*\n\-+[^\n]*\nsys_utcdate\:\s*([^\n]*)\nsys_hostdate\:\s*([^\n]*)\nsys_epoch\:\s*[^\n]*\nsys_timezone\:\s*([^\n]*)/
+	AS obs_date_str,sys_date,sys_tz_offset
+;
+
+#SAMPLE DATA
+#Hostname
+#--------
+#inblrgbdev.glassbeam.com
+
+DEFINE NAMESPACE lin.dt.host DESCRIPTION 'Linux Host'	REF lin
+	BEGINS WITH /HOSTNAME[^\n]*\n\-+[^\n]*\n[^\n]*/
+	CONTEXT /HOSTNAME[^\n]*\n\-+[^\n]*\n([^\n]*)/
+	AS sys_host_name
+;
+
+DEFINE NAMESPACE lin.dt.host.cpuinfo	DESCRIPTION	'CPU utilization'	TYPE	EVENT		
+	BEGINS WITH /\d+\:\d+\:\d+\s*\w{0,2}\s+CPU\s+\%user\s+\%nice\s+\%system\s+\%iowait\s+\%steal\s+\%idle/
+	ENDS WITH /Average\:[^\n]*/
+;	
+
+
+DEFINE NAMESPACE lin.dt.host.memutil	DESCRIPTION	'Memory and swap space utilization statistics'	TYPE	EVENT
+	BEGINS WITH /\d+\:\d+\:\d+\s+\w{0,2}\s+kbmemfree\s+kbmemused\s+\%memused\s+kbbuffers\s+kbcached\s+kbswpfree\s+kbswpused\s+\%swpused\s+kbswpcad/
+	ENDS WITH /Average\:[^\n]*/
+;	
+
+DEFINE NAMESPACE lin.dt.host.netrep	DESCRIPTION 'Network Devices Report'	TYPE	EVENT		
+	BEGINS WITH /\d+\:\d+\:\d+\s+\w{0,2}\s+IFACE\s+rxpck\/s\s+txpck\/s\s+rxbyt\/s\s+txbyt\/s\s+rxcmp\/s\s+txcmp\/s\s+rxmcst\/s/
+	ENDS WITH /Average\:[^\n]*/
+;
+
+DEFINE NAMESPACE lin.dt.host.lsd	DESCRIPTION 'IOSTAT Command Parent' REF lin.dt.host
+	BEGINS WITH /Linux[^\(]*\([^\)]*\)\s+\d+\/\d+\/\d+/
+;
+
+DEFINE NAMESPACE lin.dt.host.lsd.iostat	DESCRIPTION 'IOSTAT Command' TYPE EVENT
+	BEGINS WITH /Device\:\s*tps\s*Blk\_read\/s\s*Blk\_wrtn\/s\s*Blk\_read\s*Blk_wrtn/
+;
+
+DEFINE NAMESPACE lin.dt.host.vmstat DESCRIPTION 'VMSTAT Command'	TYPE	EVENT
+	BEGINS WITH /procs\s*\-+memory\-+\s*\-+swap\-+\s*\-+io\-+\s*\-+system\-+\s*\-+cpu\-+/
+;
+
+DEFINE NAMESPACE lin.dt.host.swpag	DESCRIPTION	'Num of swap pages taken in or out per sec'	TYPE	EVENT
+	BEGINS WITH /\d+\:\d+\:\d+\s*\w{0,2}\s*pswpin\/s\s*pswpout\/s/
+;
+
+DEFINE NAMESPACE lin.dt.host.dwps	DESCRIPTION	'Num of Read and Write req and blocks per sec'	TYPE	EVENT
+	BEGINS WITH /\d+\:\d+\:\d+\s*\w+\s+tps\s+rtps\s+wtps\s+bread\/s\s+bwrtn\/s/
+;
+
+DEFINE NAMESPACE lin.dt.host.inode	DESCRIPTION	'Number of inode, file and super block used'	TYPE	EVENT
+	BEGINS WITH /\d+\:\d+\:\d+\s*\w{0,2}\s*dentunusd\s+file\-sz\s+inode\-sz\s+super\-sz\s+\%super\-sz\s+dquot\-sz\s+\%dquot\-sz\s+rtsig\-sz\s+\%rtsig\-sz/
+;
+
+DEFINE NAMESPACE lin.dt.host.sck	DESCRIPTION	'Total number of sockets and its breakup'	TYPE	EVENT
+	BEGINS WITH /\d+\:\d+\:\d+\s+\w{0,2}\s+totsck\s+tcpsck\s+udpsck\s+rawsck\s+ip\-frag/
+;
+
+DEFINE NAMESPACE lin.dt.host.prold	DESCRIPTION	'Processes-Q len,tot num of processes,avg load in 15 mins'	TYPE	EVENT
+	BEGINS WITH /\d+\:\d+\:\d+\s+\w{0,2}\s+runq\-sz\s+plist\-sz\s+ldavg\-1\s+ldavg\-5\s+ldavg\-15/
+;
+
+DEFINE NAMESPACE lin.dt.host.memlet	DESCRIPTION	'Linux MEMORY LATENCY'	TYPE	EVENT
+	BEGINS WITH /MEMORY\s+LATENCY/
+;
+
+DEFINE NAMESPACE lin.dt.host.netwk	DESCRIPTION	'Linux NETWORK LATENCY'	TYPE	EVENT
+	BEGINS WITH /PING\s+TEST/
+;
+
+########## Apache log ##########
+
+DEFINE NAMESPACE lin.apcl	DESCRIPTION	'Apache Header'	TYPE	EVENT
+	BEGINS WITH /Apache\s+Date\s+and\s+Time[^\n]*\n\-+[^\n]*\nsys_utcdate\:[^\n]*\nsys_hostdate\:[^\n]*\nsys_epoch\:[^\n]*\nsys_timezone\:\s*[^\n]*\n/
+	ENDS WITH /_SPL_END_OF_FILE_/
+	CONTEXT /Apache\s+Date\s+and\s+Time[^\n]*\n\-+[^\n]*\nsys_utcdate\:([^\n]*)\nsys_hostdate\:([^\n]*)\nsys_epoch\:([^\n]*)\nsys_timezone\:\s*([^\n]*)\n/
+	AS	sys_apc_obs_tm, sys_apc_loc_tm,sys_apc_epo,sys_apc_tmz
+;
+
+########### MYSQL ##############
+
+DEFINE NAMESPACE lin.msql	DESCRIPTION	'Mysql Log Data'	REF	lin
+	BEGINS WITH /MySQL\s+Date\s+and\s+Time[^\n]*\n\-+[^\n]*\nsys_utcdate\:[^\n]*\nsys_hostdate\:[^\n]*\nsys_epoch\:[^\n]*\nsys_timezone\:\s*[^\n]*/
+	ENDS WITH /\_SPL\_END\_OF\_FILE\_/
+	CONTEXT /MySQL\s+Date\s+and\s+Time[^\n]*\n\-+[^\n]*\nsys_utcdate\:([^\n]*)\nsys_hostdate\:([^\n]*)\nsys_epoch\:([^\n]*)\nsys_timezone\:\s*([^\n]*)/
+	AS msql_obs_time,msql_host_time, msql_epoch, msql_offset
+;
+DEFINE NAMESPACE  lin.msql.genqr	DESCRIPTION 'Mysql General query'	TYPE	EVENT
+	BEGINS WITH /MYSQL\s+GENERAL\s+QUERY\s+LOG[^\n]*\n\-+[^\n]*\n[\/\w]+\,\s+Version\:\s*\S+\s*\([^\)]*\)\.\s+started\s+with\:[^\n]*/
+;
+
+#------------------------------------------------------------------------------------------------------------
+
+DEFINE NAMESPACE  lin.msql.mqlrep	DESCRIPTION 'Mysql Report'	TYPE	EVENT
+	BEGINS WITH /MySQL\s+\S+\s+uptime\s+\d+\s+\d+\:\d+\:\d+\s+\w+\s+\w+\s+\d+\s+\d+\:\d+\:\d+\s+\d+/
+	CONTEXT /MySQL\s+\S+\s+uptime\s+\d+\s+\d+\:\d+\:\d+\s+(\w+\s+\w+\s+\d+\s+\d+\:\d+\:\d+\s+\d+)/
+	AS	mysql_rep_tm
+;
+
+DEFINE NAMESPACE   lin.msql.mqlrep.dml	DESCRIPTION 'Mysql Report/DML Statements'	TYPE    EVENT
+	BEGINS WITH /DMS\s+\d+\s+\d+\.?\d*\/s\s+\d+\.?\d*/
+;
+
+DEFINE NAMESPACE  lin.msql.mqlrep.tl	DESCRIPTION 'Mysql Report/Table Locks'	TYPE    EVENT
+	BEGINS WITH /\_+\s*Table\s*Locks\s*\_+/
+;
+
+DEFINE NAMESPACE  lin.msql.mqlrep.tab	DESCRIPTION 'Mysql Report/Tables'	TYPE    EVENT
+	BEGINS WITH /\_+\s*Tables\s*\_+/
+;
+
+DEFINE NAMESPACE  lin.msql.mqlrep.conn	DESCRIPTION 'Mysql Report/Connections'	TYPE    EVENT
+	BEGINS WITH /\_+\s*Connections\s*\_+/
+;
+
+DEFINE NAMESPACE  lin.msql.mqlrep.thread	DESCRIPTION 'Mysql Report/Threads'	TYPE    EVENT
+	BEGINS WITH /\_+\s*Threads\s*\_+/
+;
+
+DEFINE NAMESPACE  lin.msql.mqlrep.abort	DESCRIPTION 'Mysql Report/Aborted'	TYPE    EVENT
+	BEGINS WITH /\_+\s*Aborted\s*\_+/
+;
+
+DEFINE NAMESPACE  lin.msql.mqlrep.bytes	DESCRIPTION 'Mysql Report/Bytes'	TYPE    EVENT
+	BEGINS WITH /\_+\s*Bytes\s*\_+/
+;
+
+#DEFINE NAMESPACE  lin.msql.mqlrep.innbuffpl	DESCRIPTION 'Mysql Report/InnoDB Buffer Pool'	TYPE    EVENT
+#	BEGINS WITH /\_+\s*InnoDB\s+Buffer\s+Pool\s*\_+/
+#;
+
+#-------------------------------------------------------------------------------------------------------------
+
+#Slow Query 
+DEFINE NAMESPACE lin.msql.slow_query	DESCRIPTION	'Slow Query'	TYPE	EVENT
+	BEGINS WITH /\#\s*Time\:\s*\d{2}\d{2}\d{2}\s*\d+\:\d+\:\d+/
+	CONTEXT	/\#\s*Time\:\s*(\d{2})(\d{2})(\d{2})\s*(\d+\:\d+\:\d+)/
+	AS	slw_yer,slw_mth,slw_dy,slw_tim	
+;	
+
+###binary logs
+DEFINE NAMESPACE lin.msql.bin_logs	DESCRIPTION	'Binary logs'	TYPE	EVENT
+	BEGINS WITH /MYSQL\s+BINARY\s+LOG/
+;	
+
+#############################################################################################################################
+
+DEFINE TABLE host NAMESPACE lin.dt.host
+        ICON list_basic
+	LINEGRAB //
+	COLUMN		sys_hwaddr      (sys.static)    	[s(128):nn]	<label='Hardware Address'>
+	COLUMN		sys_cust_name	(sys.conf)		[s(128):nn]	<label='Customer Name'>
+	COLUMN		sys_date	(sys.conf)		[s(64):n]	<label='System Time'>
+	COLUMN		sys_timezone	(sys.conf)		[s(64):n]	<label='System Time Zone'>
+	COLUMN		sys_tz_offset	(sys.conf)		[s(64):n]	<label='System Time Zone Offset'>
+	COLUMN          sys_host_name	(sys.conf)		[s(256):nn]	<label='Host Name', facet='S'>	WITH SOLRMAPPING (datatype='string', multivalued='false')
+	COLUMN          sys_display_name	(sys.conf)	[s(256):n]	<label='Sys Display Name'>
+	COLUMN          obs_date_str    (obs.static)    	[s(64):nn]	<label='System Time', facet='S'>	WITH SOLRMAPPING (datatype='string', multivalued='false')	
+	COLUMN		obs_epoch 	(obs.static)		[i(64):nn] 	<units='epoch', facet='S'>	WITH SOLRMAPPING (name='obs_date', datatype='tdate', multivalued='false')
+#	COLUMN		obs_epoch 	(obs.static)		[i(64):nn] 	<units='epoch', facet='S'>	WITH SOLRMAPPING (name='obs_date', datatype='tdate', multivalued='false')
+	COLUMN		obs_qtr  	(obs.static)		[i(64):nn]
+	COLUMN		obs_30day 	(obs.static) 		[i(64):nn]
+	COLUMN		obs_month 	(obs.static)		[i(64):nn]
+	COLUMN 		obs_week 	(obs.static)		[i(64):nn]
+	COLUMN 		obs_day  	(obs.static)		[i(64):nn]
+	COLUMN 		obs_hour 	(obs.static)		[i(64):nn]
+	COLUMN 		obs_10min	(obs.static) 		[i(64):nn]
+	COLUMN 		obs_idx		(obs.static)		[i(64):nn]
+	COLUMN 		obs_id_name	(obs.static)		[s(256):n]
+	COLUMN		obs_url   	(obs.static) 		[s(1024):nn]	<label='Bundle Location', facet='S'>	WITH SOLRMAPPING (datatype='string', multivalued='false')
+	COLUMN 		obs_subject	(obs.static)		[s(128):nn:'Data Capture']
+	COLUMN 		obs_sysobs	(obs.static:sysobs) 	[i(64):nn:'1']
+	ADD_CONTEXT(sys_hwaddr ,sys_cust_name,sys_timezone,sys_tz_offset, obs_url,obs_date_str,sys_date,sys_host_name)
+	COLSPLIT(sys_date, /\w+\s+\w+\s+\d+\s+\d+\:\d+\:\d+\s+(\w+)\s+\d+/,sys_timezone)
+	COLCOPY('1',obs_sysobs)
+	COLJOIN(obs_id_name,sys_hwaddr,'#',sys_host_name,'#',obs_date_str)
+	COLCOPY('GlassBeam',obs_subject)
+	COLCOPY(sys_host_name,sys_display_name)
+	COLCALC(obs_idx,MD5,obs_date_str)
+	COLSPLIT(obs_idx, /^(\w{7})/, obs_idx)
+	COLCALC(obs_idx, HEX2DEC, obs_idx)
+	COLCALC(obs_epoch, STR2TIME, obs_date_str)
+	COLCALC(obs_qtr, TIME2QTR, obs_epoch)
+	COLCALC(obs_30day, TIME2MONTH, obs_epoch)
+	COLCALC(obs_month, STR2MMYY, obs_date_str)
+	COLCALC(obs_week, TIME2WEEK, obs_epoch)
+	COLCALC(obs_day, TIME2DAY, obs_epoch)
+	COLCALC(obs_hour, TIME2HOUR, obs_epoch)
+	COLCALC(obs_10min, TIME210MIN, obs_epoch)
+	CONSTRAIN()
+;
+
+#CPU Utilisation
+#SAMPLE DATA
+#12:00:01 AM       CPU     %user     %nice   %system   %iowait    %steal     %idle
+#12:10:02 AM       all      0.05      0.00      0.40      0.15      0.00     99.40
+#12:10:02 AM         0      0.03      0.00      0.38      0.26      0.00     99.34
+#12:10:02 AM         1      0.08      0.00      0.42      0.04      0.00     99.46
+#12:20:01 AM       all      0.06      0.00      0.37      0.12      0.00     99.45
+#12:20:01 AM         0      0.10      0.00      0.42      0.21      0.00     99.27
+#12:20:01 AM         1      0.02      0.00      0.32      0.03      0.00     99.63
+DEFINE TABLE cpu_utiliz	NAMESPACE	lin.dt.host.cpuinfo
+	ICON list_basic
+	LINEGRAB /((\d+\:\d+\:\d+\s*\w{0,2})\s+(\w+)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*))/
+	COLUMN	temp1				[s(4096):n]					AS	1
+	COLUMN	temp_time			[s(128):n]					AS	2
+	COLUMN	evt_cpu		(evt.static)	[s(128):n]	<label='CPU Under Observation'>	AS	3
+	COLUMN	evt_user	(evt.static)	[r(64):n]	<label='%user'>			AS	4
+	COLUMN	evt_nice	(evt.static)	[r(64):n]	<label='%nice'>			AS	5
+	COLUMN	evt_sys		(evt.static)	[r(64):n]	<label='%system'>		AS	6
+	COLUMN	evt_iowait	(evt.static)	[r(64):n]	<label='%iowait'>		AS	7
+	COLUMN	evt_steal	(evt.static)	[r(64):n]	<label='%steal'>		AS	8
+	COLUMN	evt_idle	(evt.static)	[r(64):n]	<label='%idle'>			AS	9
+	COLUMN	sys_hwaddr      (sys.static)    [s(128):nn]	<label='Hardware Address'>
+	COLUMN	sys_date	(sys.conf)	[s(64):n]	<label='System Time'>
+	COLUMN	sys_tz_offset	(sys.conf)	[s(64):n]	<label='System Time Zone Offset'>
+	COLUMN	sys_date_prefix			[s(128):n]	
+	COLUMN	sys_date_suffix			[s(128):n]
+
+	COLUMN	evt_date_str	(evt.static)	[s(128):nn]	<label='Time Of Observation', facet='E'>  WITH SOLRMAPPING (datatype='string', multivalued='false')
+	COLUMN	evt_text	(evt.static)	[s(2048):n]	<label='Event Text'>
+	COLUMN	evt_severity	(evt.static)	[s(128):n]	<label='Event Severity'>
+	COLUMN	evt_sev_idx	(evt.static)	[i(64):n]	<label='Event Index'>	
+	COLUMN	evt_label	(evt.static)	[s(256):n]	<label='Event Label'>
+	COLUMN	evt_source	(evt.static)	[s(64):n] 	<label='Event Source'>
+	COLUMN	evt_evt	(evt.static:cpuutil)	[i(64):n]	<label='Event Grouping'>
+
+	COLUMN	evt_epoch	(evt.static)                  [i(64):nn]	<units='epoch', facet='E'>  WITH SOLRMAPPING (name='evt_date',datatype='tdate', multivalued='false')
+	COLUMN	evt_type	(evt.static)                  [s(32):nn]
+        COLUMN	evt_idx         (evt.static)                  [i(64):nn]
+        COLUMN	evt_md5         (evt.static)                  [s(16):nn]
+        COLUMN	evt_qtr         (evt.static)                  [i(64):nn]
+        COLUMN	evt_month       (evt.static)                  [i(64):nn]
+	COLUMN	evt_30day 	(evt.static)   		      [i(64):nn]
+        COLUMN	evt_week        (evt.static)                  [i(64):nn]
+        COLUMN	evt_day         (evt.static)                  [i(64):nn]
+        COLUMN	evt_hour        (evt.static)                  [i(64):nn]
+        COLUMN	evt_10min       (evt.static)                  [i(64):nn]
+	
+	ADD_CONTEXT(sys_date,sys_hwaddr,sys_tz_offset)
+	COLSPLIT(sys_date, /(\w+\s+\w+\s+\d+)\s+\d+\:\d+\:\d+\s+\w+(\s+\d+)/,sys_date_prefix,sys_date_suffix)
+	COLJOIN(evt_date_str,sys_date_prefix,' ',temp_time,' UTC ',sys_tz_offset,' ',sys_date_suffix)	
+	COLCALC(evt_epoch,STR2TIME,evt_date_str)
+	COLJOIN(evt_md5,evt_epoch,evt_cpu,evt_user,evt_nice,evt_sys,evt_iowait,evt_steal,evt_idle)
+	COLJOIN(evt_text,temp_time,' ',evt_cpu,' ',evt_user,' ',evt_nice,' ',evt_sys,' ',evt_iowait,' ',evt_steal,' ',evt_idle)
+	COLCOPY('Cpu Info',evt_severity)
+	COLCOPY('1',evt_evt)
+	COLCOPY('0',evt_sev_idx)
+	COLCALC(evt_md5,MD5,evt_md5)
+	COLCOPY('SAR Utility',evt_source)
+	COLCOPY('Info',evt_type)
+	COLCOPY('CPU Utilization',evt_label)
+	COLSPLIT(evt_md5, /^((\w{7})\w{9})/, evt_md5, evt_idx)
+	COLCALC(evt_idx, HEX2DEC, evt_idx)
+	COLCALC(evt_qtr, TIME2QTR,  evt_epoch)
+        COLCALC(evt_month, STR2MMYY, evt_date_str)
+	COLCALC(evt_30day, TIME2MONTH, evt_epoch)
+        COLCALC(evt_week, TIME2WEEK, evt_epoch)
+        COLCALC(evt_day, TIME2DAY, evt_epoch)
+        COLCALC(evt_hour, TIME2HOUR, evt_epoch)
+        COLCALC(evt_10min, TIME210MIN, evt_epoch)
+	COLDROP(temp_time,obs_date_prefix,obs_date_suffix)	
+	CONSTRAIN()
+;
+
+#SAMPLE DATA
+#MYSQL  TIMESTAMP
+#---------------
+#sys_utcdate: Thu Feb 28 08:57:14 UTC 2013
+#sys_hostdate: Thu Feb 28 14:27:14 IST 2013
+#sys_epoch: 1362041834
+
+DEFINE TABLE mysql_tb	NAMESPACE	lin.msql		
+	ICON list_basic
+	LINEGRAB //
+	COLUMN	msql_obs_time	(sys.static)	[s(128):n]	<label='MYSQL Obs Time'>
+	COLUMN	msql_host_time	(sys.static)	[s(128):n]	<label='MYSQL Local Time'>
+	COLUMN	msql_epoch	(sys.static)	[i(64):n]	<label='MYSQL EPOCH'>
+	COLUMN	msql_offset	(sys.static)	[s(128):n]
+	COLUMN	sys_hwaddr      (sys.static)   	[s(128):nn]	<label='Hardware Address'>
+	ADD_CONTEXT(sys_hwaddr,msql_obs_time,msql_host_time,msql_epoch,msql_offset,sys_hwaddr)
+	CONSTRAIN()
+;
+
+
+#CPU Memory Latency
+#SAMPLE LOGS
+#Time to complete read & write for 1024 bytes:0.003 ms.
+#Time to complete read & write for 1024 bytes:0.003 ms.
+#Time to complete read & write for 1024 bytes:0.003 ms.
+
+DEFINE TABLE	lx_memlat	NAMESPACE	lin.dt.host.memlet
+	ICON	list_basic
+	LINEGRAB /(Time\s+to\s+complete\s+read\s+&\s+write\s+for\s+(\d+)\s+bytes\:(\d+\.?\d*)\s*ms\.)/
+	COLUMN	memlet_bk_sz			[i(64):n]				AS	2	
+	COLUMN	memlet_bk_tm			[r(64):n]				AS	3	
+	COLUMN	memlet_bk_avg	(memlet.static)	[r(64):n]	<label='Avg Time To Complete'>		
+	COLUMN	obs_date_str    (obs.static)   	[s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    [s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	memlet_date_str	(memlet.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	memlet_text	(memlet.static)	[s(2048):n]	<label='Memory latency Text'>	AS	1
+	COLUMN	memlet_severity	(memlet.static)	[s(128):n]	<label='Memory latency Severity'>
+	COLUMN	memlet_sev_idx	(memlet.static)	[i(64):n]	<label='Memory latency Index'>	
+	COLUMN 	memlet_type 	(memlet.static)	[s(32):n]	<label='Memory latency Type'>
+	COLUMN	memlet_label	(memlet.static)	[s(256):n]	<label='Memory latency Label'>
+	COLUMN	memlet_source	(memlet.static)	[s(64):n]	<label='Memory latency Source'>	
+	COLUMN	memlet_memlet	(memlet.static:memlt)	[i(64):n]	<label='Event Grouping'>
+
+	COLUMN	memlet_epoch		(memlet.static)                  [i(64):nn]	<units='epoch', facet='E'>
+	COLUMN	memlet_idx		(memlet.static)                  [i(64):nn]
+	COLUMN	memlet_md5		(memlet.static)                  [s(16):nn]
+	COLUMN	memlet_qtr		(memlet.static)                  [i(64):nn]
+	COLUMN	memlet_month		(memlet.static)                  [i(64):nn]
+	COLUMN	memlet_30day		(memlet.static) 		 [i(64):nn]
+	COLUMN	memlet_week		(memlet.static)                  [i(64):nn]
+	COLUMN	memlet_day		(memlet.static)                  [i(64):nn]
+	COLUMN	memlet_hour		(memlet.static)                  [i(64):nn]
+	COLUMN	memlet_10min		(memlet.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLCOPY(obs_date_str,memlet_date_str)
+	COLCOPY('Info',memlet_type)
+	COLCOPY('Mem Latency Info',memlet_severity)
+	COLCOPY('1',memlet_memlet)
+	COLCOPY('0',memlet_sev_idx)
+	COLCOPY('SAR Utility',memlet_source)
+	COLCOPY('Memory Latency',memlet_label)
+	
+	COLCALC(memlet_epoch,STR2TIME,memlet_date_str)
+	COLJOIN(memlet_md5,memlet_bk_sz,memlet_bk_tm,obs_date_str)
+	COLCALC(memlet_md5,MD5,memlet_md5)
+	COLSPLIT(memlet_md5, /^((\w{7})\w{9})/, memlet_md5, memlet_idx)
+	COLCALC(memlet_idx, HEX2DEC, memlet_idx)
+	COLCALC(memlet_qtr, TIME2QTR,  memlet_epoch)
+	COLCALC(memlet_month, STR2MMYY, memlet_date_str)
+	COLCALC(memlet_30day, TIME2MONTH, memlet_epoch)
+	COLCALC(memlet_week, TIME2WEEK, memlet_epoch)
+	COLCALC(memlet_day, TIME2DAY, memlet_epoch)
+	COLCALC(memlet_hour, TIME2HOUR, memlet_epoch)
+	COLCALC(memlet_10min, TIME210MIN, memlet_epoch)
+	CONSTRAIN()
+;
+
+#Network Latency
+#SAMPLE DATA
+#PING TEST
+#---------------
+#PING 192.168.190.1 (192.168.190.1) 56(84) bytes of data.
+#64 bytes from 192.168.190.1: icmp_seq=1 ttl=128 time=0.464 ms
+#64 bytes from 192.168.190.1: icmp_seq=2 ttl=128 time=0.479 ms
+#64 bytes from 192.168.190.1: icmp_seq=3 ttl=128 time=0.957 ms
+
+DEFINE TABLE	lx_netlat	NAMESPACE	lin.dt.host.netwk	
+	ICON	list_basic
+	LINEGRAB /(\d+\s+bytes\s+from\s+[\d\:\.]+\s+icmp\_seq\=\d+\s+\w+\=\d+\s+time\=(\d+\.?\d*)\s*ms)/
+	COLUMN	netlet_bk_tm			[r(64):n]				AS	2	
+	COLUMN	netlet_bk_avg	(netlet.static)	[r(64):n]	<label='Avg Time To Complete'>		
+	COLUMN	obs_date_str    (obs.static)   	[s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    [s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	netlet_date_str	(netlet.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	netlet_text	(netlet.static)	[s(2048):n]	<label='Network Stats Text'>	AS	1
+	COLUMN	netlet_severity	(netlet.static)	[s(128):n]	<label='Network Stats Severity'>
+	COLUMN	netlet_sev_idx	(netlet.static)	[i(64):n]	<label='Network Stats Index'>	
+	COLUMN 	netlet_type 	(netlet.static)	[s(32):n]	<label='Network Stats Type'>
+	COLUMN	netlet_label	(netlet.static)	[s(256):n]	<label='Network Stats Label'>
+	COLUMN	netlet_source	(netlet.static)	[s(64):n]	<label='Network Stats Source'>	
+	COLUMN	netlet_netlet	(netlet.static:netlt)	[i(64):n]	<label='Network Stats Grouping'>
+
+	COLUMN netlet_epoch              (netlet.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN netlet_idx                (netlet.static)                  [i(64):nn]
+        COLUMN netlet_md5                (netlet.static)                  [s(16):nn]
+        COLUMN netlet_qtr                (netlet.static)                  [i(64):nn]
+        COLUMN netlet_month              (netlet.static)                  [i(64):nn]
+	COLUMN netlet_30day 		 (netlet.static) 		  [i(64):nn]
+        COLUMN netlet_week               (netlet.static)                  [i(64):nn]
+        COLUMN netlet_day                (netlet.static)                  [i(64):nn]
+        COLUMN netlet_hour               (netlet.static)                  [i(64):nn]
+        COLUMN netlet_10min              (netlet.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLCOPY(obs_date_str,netlat_date_str)
+	COLCALC(netlet_epoch,STR2TIME,netlat_date_str)
+	COLJOIN(netlet_md5,netlet_bk_tm,netlet_bk_tm,obs_date_str)
+	COLCOPY('Ping',netlat_severity)
+	COLCOPY('0',netlat_sev_idx)
+	COLCOPY('Info',netlat_type)
+	COLCOPY('Ping Stats',netlat_label)
+	COLCOPY('Ping Info',netlat_source)
+	COLCOPY('1',netlet_netlet)
+
+	COLCALC(netlet_md5,MD5,netlet_md5)
+	COLSPLIT(netlet_md5, /^((\w{7})\w{9})/, netlet_md5, netlet_idx)
+	COLCALC(netlet_idx, HEX2DEC, netlet_idx)
+	COLCALC(netlet_qtr, TIME2QTR,  netlet_epoch)
+        COLCALC(netlet_month, STR2MMYY, netlat_date_str)
+	COLCALC(netlet_30day, TIME2MONTH, netlet_epoch)
+        COLCALC(netlet_week, TIME2WEEK, netlet_epoch)
+        COLCALC(netlet_day, TIME2DAY, netlet_epoch)
+        COLCALC(netlet_hour, TIME2HOUR, netlet_epoch)
+        COLCALC(netlet_10min, TIME210MIN, netlet_epoch)
+	CONSTRAIN()
+;
+
+#Memory Information
+#SAMPLE SECTION
+#12:00:01 AM kbmemfree kbmemused  %memused kbbuffers  kbcached kbswpfree kbswpused  %swpused  kbswpcad
+#12:10:02 AM   1755736    756572     30.11    102236    446816   2064376         0      0.00         0
+#12:20:01 AM   1754508    757800     30.16    102608    447148   2064376         0      0.00         0
+DEFINE TABLE mem_util	NAMESPACE	lin.dt.host.memutil
+	ICON list_basic
+	LINEGRAB /(\d+\:\d+\:\d+\s+\w{0,2})\s+((\d+)\s+(\d+)\s+(\d+\.?\d*)\s*(\d+)\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+\.?\d*)\s+(\d+))/
+	COLUMN	memtemp_time						[s(256):n]				AS	1
+	COLUMN	memutli_kbmemfree	(memutli.static)		[i(64):nn]	<label='kbmemfree'>	AS	3
+	COLUMN	memutli_kbmemused	(memutli.static)		[i(64):nn]	<label='kbmemused'>	AS	4
+	COLUMN	memutli_memused		(memutli.static)		[r(64):nn]	<label='memused'>	AS	5
+	COLUMN	memutli_kbbuffers	(memutli.static)		[i(64):nn]	<label='kbbuffers'>	AS	6
+	COLUMN	memutli_kbcached	(memutli.static)		[i(64):nn]	<label='kbcached'>	AS	7
+	COLUMN	memutli_kbswpfree	(memutli.static)		[i(64):nn]	<label='kbswpfree'>	AS	8
+	COLUMN	memutli_kbswpused	(memutli.static)		[i(64):nn]	<label='kbswpused'>	AS	9
+	COLUMN	memutli_swpused		(memutli.static)		[r(64):nn]	<label='swpused'>	AS	10
+	COLUMN	memutli_kbswpcad	(memutli.static)		[i(64):nn]	<label='kbswpcad'>	AS	11
+	COLUMN	obs_date_str    	(obs.static)    		[s(64):nn]	
+	COLUMN	sys_hwaddr      	(sys.static)    		[s(128):nn]	<label='Hardware Address'>
+	COLUMN	obs_dat_prefix			    			[s(64):nn]	
+	COLUMN	obs_dat_suffix			    			[s(64):nn]
+
+	COLUMN	memutli_date_str	(memutli.static)	[s(128):nn]	<label='Observation Time', facet='E'>
+	COLUMN	memutli_text		(memutli.static)	[s(2048):n]	<label='Memory Info Text'>	AS	2
+	COLUMN	memutli_severity	(memutli.static)	[s(128):n]	<label='Memory Info Severity'>
+	COLUMN	memutli_sev_idx		(memutli.static)	[i(64):n]	<label='Memory Info Index'>	
+	COLUMN	memutli_label		(memutli.static)	[s(256):n]	<label='Memory Info Label'>
+	COLUMN	memutli_source		(memutli.static)	[s(64):n]	<label='Memory Info Source'>	
+	COLUMN	memutli_memutli		(memutli.static:memut)	[i(64):n]	<label='Memory Info Grouping'>
+	
+	
+	COLUMN memutli_epoch              (memutli.static)                  [i(64):nn]	<units='epoch', facet='E'>
+	COLUMN memutli_type               (memutli.static)                  [s(32):nn]
+        COLUMN memutli_idx                (memutli.static)                  [i(64):nn]
+        COLUMN memutli_md5                (memutli.static)                  [s(16):nn]
+        COLUMN memutli_qtr                (memutli.static)                  [i(64):nn]
+        COLUMN memutli_month              (memutli.static)                  [i(64):nn]
+	COLUMN memutli_30day 		  (memutli.static) 		    [i(64):nn]
+        COLUMN memutli_week               (memutli.static)                  [i(64):nn]
+        COLUMN memutli_day                (memutli.static)                  [i(64):nn]
+        COLUMN memutli_hour               (memutli.static)                  [i(64):nn]
+        COLUMN memutli_10min              (memutli.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLSPLIT(obs_date_str,/(\w+\s+\w+\s+\d+\s+)\d+\:\d+\:\d+(\s+\w{3}\s+\d{4})/,obs_dat_prefix,obs_dat_suffix)
+	COLJOIN(memutli_date_str,obs_dat_prefix,memtemp_time,obs_dat_suffix)
+	COLCALC(memutli_epoch,STR2TIME,memutli_date_str)
+	COLJOIN(memutli_md5,memutli_epoch,memutli_kbswpcad,memutli_swpused,memutli_kbswpused,memutli_kbswpfree,memutli_kbcached,memutli_kbbuffers,memutli_memused,memutli_kbmemused)
+	COLCALC(memutli_md5,MD5,memutli_md5)
+	COLCOPY('Info',memutli_type)
+	COLCOPY('Mem Utility Info',memutli_severity)
+	COLCOPY('1',memutli_sev_idx)
+	COLCOPY('Mem Util',memutli_label)
+	COLCOPY('SAR Utility',memutli_source)
+	COLCOPY('1',memutli_memutli)
+
+	COLSPLIT(memutli_md5, /^((\w{7})\w{9})/, memutli_md5, memutli_idx)
+	COLCALC(memutli_idx, HEX2DEC,memutli_idx)
+	COLCALC(memutli_qtr, TIME2QTR, memutli_epoch)
+        COLCALC(memutli_month, STR2MMYY, memutli_date_str)
+	COLCALC(memutli_30day, TIME2MONTH,memutli_epoch)
+        COLCALC(memutli_week, TIME2WEEK, memutli_epoch)
+        COLCALC(memutli_day, TIME2DAY, memutli_epoch)
+        COLCALC(memutli_hour, TIME2HOUR, memutli_epoch)
+        COLCALC(memutli_10min, TIME210MIN, memutli_epoch)
+	COLDROP(memtemp_time,obs_dat_prefix,obs_dat_suffix)	
+	CONSTRAIN()
+;
+
+#SAMPLE DATA
+#Linux 2.6.18-128.el5 (inblrgbdev.glassbeam.com)         02/27/2013
+#
+#avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+#           0.23    0.00    0.43    1.30    0.00   98.03
+#
+#Device:            tps   Blk_read/s   Blk_wrtn/s   Blk_read   Blk_wrtn
+#hda               5.99       258.48        34.15     755356      99804
+#hda1              0.11         0.81         0.00       2364          4
+#hda2              5.87       257.56        34.15     752656      99800
+#dm-0             11.74       257.09        34.15     751298      99800
+#dm-1              0.04         0.31         0.00        896          0
+
+DEFINE TABLE iostat	NAMESPACE	lin.dt.host.lsd.iostat
+	ICON list_basic
+	LINEGRAB /(([\w\-\_]+)\s+(\d+\.?\d*)\s*(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+)\s+(\d+)[^\n]*)/
+	COLUMN	iost_dev	(iost.static)	[s(128):nn]	<label='Device'>	AS	2
+	COLUMN	iost_tps	(iost.static)	[r(64):n]	<label='Tps'>		AS	3
+	COLUMN	iost_blk_rdps	(iost.static)	[r(64):n]	<label='Blk_read/s'>	AS	4
+	COLUMN	iost_blk_wrps	(iost.static)	[r(64):n]	<label='Blk_wrtn/s'>	AS	5
+	COLUMN	iost_blk_rd	(iost.static)	[i(64):n]	<label='Blk_read'>	AS	6
+	COLUMN	iost_blk_wrtm	(iost.static)	[i(64):n]	<label='Blk_wrtn'>	AS	7
+	COLUMN	obs_date_str   	(obs.static)   	[s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    		[s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	iost_date_str	(iost.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	iost_text	(iost.static)	[s(2048):n]	<label='IOSTAT Text'>	AS	1	
+	COLUMN	iost_severity	(iost.static)	[s(128):n]	<label='IOSTAT Severity'>
+	COLUMN	iost_sev_idx	(iost.static)	[i(64):n]	<label='IOSTAT Index'>	
+	COLUMN 	iost_type 	(iost.static)	[s(32):n]	<label='IOSTAT Type'>
+	COLUMN	iost_label	(iost.static)	[s(256):n]	<label='IOSTAT Label'>
+	COLUMN	iost_source	(iost.static)	[s(64):n]	<label='IOSTAT Source'>	
+	COLUMN	iost_iost	(iost.static:iostgr)	[i(64):n]	<label='IOSTAT Grouping'>
+	
+	COLUMN	iost_epoch       (iost.static)                  [i(64):nn]	<units='epoch', facet='E'>
+	COLUMN	iost_idx         (iost.static)                  [i(64):nn]
+	COLUMN	iost_md5         (iost.static)                  [s(16):nn]
+	COLUMN	iost_qtr         (iost.static)                  [i(64):nn]
+	COLUMN	iost_month       (iost.static)                  [i(64):nn]
+	COLUMN	iost_30day 	 (iost.static) 		      	[i(64):nn]
+	COLUMN	iost_week        (iost.static)                  [i(64):nn]
+	COLUMN	iost_day         (iost.static)                  [i(64):nn]
+	COLUMN	iost_hour        (iost.static)                  [i(64):nn]
+	COLUMN	iost_10min       (iost.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLCOPY(obs_date_str,iost_date_str)
+	COLJOIN(iost_md5,iost_dev,iost_tps,iost_blk_rdps,iost_blk_wrps,iost_blk_rd,iost_blk_wrtm,obs_date_str)
+	COLCALC(iost_md5,MD5,iost_md5)
+
+	COLCOPY('Info',iost_type)
+	COLCOPY('IOStat Info',iost_severity)
+	COLCOPY('1',iost_sev_idx)
+	COLCOPY('IOstat data',iost_label)
+	COLCOPY('IOSTAT Utility',iost_source)
+	COLCOPY('1',iost_iost)
+
+	COLSPLIT(iost_md5, /^((\w{7})\w{9})/, iost_md5, iost_idx)
+	COLCALC(iost_idx, HEX2DEC,iost_idx)
+	COLCALC(iost_epoch,STR2TIME,iost_date_str)
+	COLCALC(iost_qtr, TIME2QTR, iost_epoch)
+	COLCALC(iost_month, STR2MMYY, iost_date_str)
+	COLCALC(iost_30day, TIME2MONTH,iost_epoch)
+        COLCALC(iost_week, TIME2WEEK, iost_epoch)
+        COLCALC(iost_day, TIME2DAY, iost_epoch)
+        COLCALC(iost_hour, TIME2HOUR, iost_epoch)
+        COLCALC(iost_10min, TIME210MIN, iost_epoch)
+	CONSTRAIN()
+;
+
+#SAMPLE DATA
+#07:40:01 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+#07:50:01 PM        lo      2.60      2.60    160.38    160.38      0.00      0.00      0.00
+#07:50:01 PM      eth0      0.76      0.63     70.94    162.30      0.00      0.00      0.00
+#07:50:01 PM      sit0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+#08:00:01 PM        lo      2.61      2.61    160.72    160.72      0.00      0.00      0.00
+#08:00:01 PM      eth0      0.82      0.82     69.04    162.83      0.00      0.00      0.00
+#08:00:01 PM      sit0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+#08:10:01 PM        lo      2.59      2.59    159.79    159.79      0.00      0.00      0.00
+
+DEFINE	TABLE	network_rep	NAMESPACE	lin.dt.host.netrep
+	ICON list_basic
+	LINEGRAB /(\d+\:\d+\:\d+\s+\w{0,2})\s+((\w+)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*))/
+	COLUMN	netrep_temp					[s(256):n]				AS	1
+	COLUMN	netrep_iface		(netrep.static)		[s(256):n]	<label='IFACE'>		AS	3
+	COLUMN	netrep_rxpck		(netrep.static)		[r(64):n]	<label='rxpck/s'>	AS	4
+	COLUMN	netrep_txpck		(netrep.static)		[r(64):n]	<label='txpck/s'>	AS	5
+	COLUMN	netrep_rxbyt		(netrep.static)		[r(64):n]	<label='rxbyt/s'>	AS	6
+	COLUMN	netrep_txbyt		(netrep.static)		[r(64):n]	<label='txbyt/s'>	AS	7
+	COLUMN	netrep_rxcmp		(netrep.static)		[r(64):n]	<label='rxcmp/s'>	AS	8
+	COLUMN	netrep_txcpm		(netrep.static)		[r(64):n]	<label='txcmp/s'>	AS	9
+	COLUMN	netrep_rxmcst		(netrep.static)		[r(64):n]	<label='rxmcst/s'>	AS	10
+	COLUMN	obs_date_str    	(obs.static)    	[s(64):nn]	
+	COLUMN	sys_hwaddr      	(sys.static)   		[s(128):nn]	<label='Hardware Address'>
+	COLUMN	obs_dat_prefix			    		[s(64):nn]	
+	COLUMN	obs_dat_suffix			    		[s(64):nn]
+
+	COLUMN	netrep_date_str		(netrep.static)		[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	netrep_text		(netrep.static)		[s(2048):n]	<label='Network Dev Report Text'> AS	2
+	COLUMN	netrep_severity		(netrep.static)		[s(128):n]	<label='Network Dev Report Severity'>
+	COLUMN	netrep_sev_idx		(netrep.static)		[i(64):n]	<label='Network Dev Report Index'>	
+	COLUMN 	netrep_type 		(netrep.static)		[s(32):n]	<label='Network Dev Report Type'>
+	COLUMN	netrep_label		(netrep.static)		[s(256):n]	<label='Network Dev Report Label'>
+	COLUMN	netrep_source		(netrep.static)		[s(64):n]	<label='Network Dev Report Source'>	
+	COLUMN	netrep_netrep		(netrep.static:netdrep)	[i(64):n]	<label='Network Dev Report Grouping'>
+
+	COLUMN netrep_epoch              (netrep.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN netrep_idx                (netrep.static)                  [i(64):nn]
+        COLUMN netrep_md5                (netrep.static)                  [s(16):nn]
+        COLUMN netrep_qtr                (netrep.static)                  [i(64):nn]
+        COLUMN netrep_month              (netrep.static)                  [i(64):nn]
+	COLUMN netrep_30day 		 (netrep.static) 		  [i(64):nn]
+        COLUMN netrep_week               (netrep.static)                  [i(64):nn]
+        COLUMN netrep_day                (netrep.static)                  [i(64):nn]
+        COLUMN netrep_hour               (netrep.static)                  [i(64):nn]
+        COLUMN netrep_10min              (netrep.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLSPLIT(obs_date_str,/(\w+\s+\w+\s+\d+\s+)\d+\:\d+\:\d+(\s+\w{3}\s+\d{4})/,obs_dat_prefix,obs_dat_suffix)
+	COLJOIN(netrep_date_str,obs_dat_prefix,netrep_temp,obs_dat_suffix)
+	COLCALC(netrep_epoch,STR2TIME,netrep_date_str)
+	COLJOIN(netrep_md5,netrep_epoch,netrep_iface,netrep_rxpck,netrep_txpck,netrep_rxbyt,netrep_txbyt,netrep_rxcmp,netrep_txcpm,netrep_rxmcst)
+	COLCALC(netrep_md5,MD5,netrep_md5)
+
+	COLCOPY('Network Dev Report',netrep_severity)
+	COLCOPY('1',netrep_sev_idx)
+	COLCOPY('Info',netrep_type)
+	COLCOPY('Network Dev Report',netrep_label)
+	COLCOPY('SAR Utility',netrep_source)
+	COLCOPY('1',netrep_netrep)
+
+	COLSPLIT(netrep_md5, /^((\w{7})\w{9})/, netrep_md5, netrep_idx)
+	COLCALC(netrep_idx, HEX2DEC,netrep_idx)
+	COLCALC(netrep_qtr, TIME2QTR, netrep_epoch)
+        COLCALC(netrep_month, STR2MMYY, netrep_date_str)
+	COLCALC(netrep_30day, TIME2MONTH,netrep_epoch)
+        COLCALC(netrep_week, TIME2WEEK, netrep_epoch)
+        COLCALC(netrep_day, TIME2DAY, netrep_epoch)
+        COLCALC(netrep_hour, TIME2HOUR, netrep_epoch)
+        COLCALC(netrep_10min, TIME210MIN, netrep_epoch)
+	COLDROP(temp_time,obs_dat_prefix,obs_dat_suffix)	
+	CONSTRAIN()
+;
+	
+
+#SAMPLE DATA
+#procs -----------memory---------- ---swap-- -----io---- --system-- -----cpu------
+#r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+#0  0      0 1994728  35888 349468    0    0    66     9  521   40  0  0 98  1  0
+DEFINE TABLE vmstat NAMESPACE lin.dt.host.vmstat 
+	ICON list_basic
+	LINEGRAB /((\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+))/
+	COLUMN	vmstat_proc_r	(vmstat.static)	[i(64):nn]	<label='Procs r'>	AS	2
+	COLUMN	vmstat_proc_b	(vmstat.static)	[i(64):nn]	<label='Procs b'>	AS	3	
+	COLUMN	vmstat_mem_swap	(vmstat.static)	[i(64):nn]	<label='Memory swap'>	AS	4
+	COLUMN	vmstat_mem_free	(vmstat.static)	[i(64):nn]	<label='Memory free'>	AS	5
+	COLUMN	vmstat_mem_buf	(vmstat.static)	[i(64):nn]	<label='Memory buff'>	AS	6
+	COLUMN	vmstat_mem_che	(vmstat.static)	[i(64):nn]	<label='Memory cache'>	AS	7
+	COLUMN	vmstat_swp_si	(vmstat.static)	[i(64):nn]	<label='Swap si'>	AS	8
+	COLUMN	vmstat_swp_so	(vmstat.static)	[i(64):nn]	<label='Swap so'>	AS	9
+	COLUMN	vmstat_swp_bi	(vmstat.static)	[i(64):nn]	<label='Io bi'>		AS	10
+	COLUMN	vmstat_io_bi	(vmstat.static)	[i(64):nn]	<label='Io bo'>		AS	11
+	COLUMN	vmstat_io_bo	(vmstat.static)	[i(64):nn]	<label='System in'>	AS	12
+	COLUMN	vmstat_sys_in	(vmstat.static)	[i(64):nn]	<label='System cs'>	AS	13
+	COLUMN	vmstat_sys_cs	(vmstat.static)	[i(64):nn]	<label='System us'>	AS	14
+	COLUMN	vmstat_sys_us	(vmstat.static)	[i(64):nn]	<label='Cpu sy'>	AS	15
+	COLUMN	vmstat_cpu_sy	(vmstat.static)	[i(64):nn]	<label='Cpu id'>	AS	16
+	COLUMN	vmstat_cpu_id	(vmstat.static)	[i(64):nn]	<label='Cpu wa'>	AS	17
+	COLUMN	vmstat_cpu_wa	(vmstat.static)	[i(64):nn]	<label='Cpu st'>	AS	18
+	COLUMN	obs_date_str   	(obs.static)   	[s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    [s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	vmstat_date_str	(vmstat.static)		[s(128):nn]	<label='VMSTAT Observation Time', facet='E'> 
+	COLUMN	vmstat_text	(vmstat.static)		[s(2048):n]	<label='VMSTAT Text'>	AS	1
+	COLUMN	vmstat_severity	(vmstat.static)		[s(128):n]	<label='VMSTAT Severity'>
+	COLUMN	vmstat_sev_idx	(vmstat.static)		[i(64):n]	<label='VMSTAT Index'>	
+	COLUMN 	vmstat_type 	(vmstat.static)		[s(32):n]	<label='VMSTAT Type'>
+	COLUMN	vmstat_label	(vmstat.static)		[s(256):n]	<label='VMSTAT Label'>
+	COLUMN	vmstat_source	(vmstat.static)		[s(64):n]	<label='VMSTAT Source'>	
+	COLUMN	vmstat_vmstat	(vmstat.static:vmgr)	[i(64):n]	<label='VMSTAT Grouping'>
+	
+	COLUMN	vmstat_epoch       (vmstat.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	vmstat_idx         (vmstat.static)                  [i(64):nn]
+        COLUMN	vmstat_md5         (vmstat.static)                  [s(16):nn]
+        COLUMN	vmstat_qtr         (vmstat.static)                  [i(64):nn]
+        COLUMN	vmstat_month       (vmstat.static)                  [i(64):nn]
+	COLUMN	vmstat_30day 	   (vmstat.static) 		    [i(64):nn]
+        COLUMN	vmstat_week        (vmstat.static)                  [i(64):nn]
+        COLUMN	vmstat_day         (vmstat.static)                  [i(64):nn]
+        COLUMN	vmstat_hour        (vmstat.static)                  [i(64):nn]
+        COLUMN	vmstat_10min       (vmstat.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLCOPY(obs_date_str,vmstat_date_str)
+	COLJOIN(vmstat_md5,vmstat_cpu_wa,vmstat_cpu_id,vmstat_cpu_sy,vmstat_sys_us,vmstat_sys_cs,vmstat_sys_in,vmstat_io_bo,vmstat_io_bi,vmstat_swp_bi,vmstat_swp_so,vmstat_swp_si,vmstat_mem_che,vmstat_mem_buf,vmstat_mem_free,vmstat_mem_swap,vmstat_proc_b,vmstat_proc_r)
+
+	COLCOPY('VMSTAT Info',vmstat_severity)
+	COLCOPY('1',vmstat_sev_idx)
+	COLCOPY('Info',vmstat_type)
+	COLCOPY('VMSTAT',vmstat_label)
+	COLCOPY('VMSTAT Command',vmstat_source)
+	COLCOPY('1',vmstat_vmstat)
+
+	COLCALC(vmstat_md5,MD5,vmstat_md5)
+	COLSPLIT(vmstat_md5, /^((\w{7})\w{9})/, vmstat_md5, vmstat_idx)
+	COLCALC(vmstat_epoch,STR2TIME,vmstat_date_str)
+	COLCALC(vmstat_idx, HEX2DEC,vmstat_idx)
+	COLCALC(vmstat_epoch,STR2TIME,vmstat_date_str)
+	COLCALC(vmstat_qtr, TIME2QTR, vmstat_epoch)
+        COLCALC(vmstat_month, STR2MMYY, vmstat_date_str)
+	COLCALC(vmstat_30day, TIME2MONTH,vmstat_epoch)
+        COLCALC(vmstat_week, TIME2WEEK, vmstat_epoch)
+        COLCALC(vmstat_day, TIME2DAY, vmstat_epoch)
+        COLCALC(vmstat_hour, TIME2HOUR, vmstat_epoch)
+        COLCALC(vmstat_10min, TIME210MIN, vmstat_epoch)
+	CONSTRAIN()
+;
+
+#SAMPLE DATA 
+#11:20:47 AM  pswpin/s pswpout/s
+#11:20:04 AM      0.00      0.00
+#11:30:01 AM      0.00      0.00
+#11:40:01 AM      0.00      0.00
+
+DEFINE TABLE swp_pgs	NAMESPACE lin.dt.host.swpag
+	ICON list_basic
+	LINEGRAB /(\d+\:\d+\:\d+\s*\w{0,2})\s*((\d+\.?\d*)\s*(\d+\.?\d*))/
+	COLUMN	swp_time	(swp.static)	[s(128):nn]	<label = 'Pswp TIME'>	AS	1
+	COLUMN	swp_pswpin	(swp.static)	[r(64):nn]	<label = 'Pswpin/s'>	AS	3
+	COLUMN	swp_pswpout	(swp.static)	[r(64):nn]	<label = 'Pswpout/s'>	AS	4
+	COLUMN  obs_date_str    (obs.static)    [s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    [s(128):nn]	<label='Hardware Address'>
+	COLUMN	dt_year				[i(64):n]
+	COLUMN	dt_date				[i(64):n]
+	COLUMN	dt_tm_zone			[s(128):n]
+	COLUMN	dt_wk				[s(128):n]
+	COLUMN	dt_moth				[s(128):n]
+
+	COLUMN	swp_date_str	(swp.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	swp_text	(swp.static)	[s(2048):n]	<label='Event Text'>	AS	2
+	COLUMN	swp_severity	(swp.static)	[s(128):n]	<label='Event Severity'>
+	COLUMN	swp_sev_idx	(swp.static)	[i(64):n]	<label='Event Index'>	
+	COLUMN 	swp_type 	(swp.static)	[s(32):n]	<label='Event Type'>
+	COLUMN	swp_label	(swp.static)	[s(256):n]	<label='Event Label'>
+	COLUMN	swp_source	(swp.static)	[s(64):n]	<label='Event Source'>	
+	COLUMN	swp_swp		(swp.static:swpgr)	[i(64):n]	<label='Event Grouping'>
+
+	COLUMN	swp_epoch       (swp.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	swp_idx         (swp.static)                  [i(64):nn]
+        COLUMN	swp_md5         (swp.static)                  [s(16):nn]
+        COLUMN	swp_qtr         (swp.static)                  [i(64):nn]
+        COLUMN	swp_month       (swp.static)                  [i(64):nn]
+	COLUMN	swp_30day 	(swp.static) 		      [i(64):nn]
+        COLUMN	swp_week        (swp.static)                  [i(64):nn]
+        COLUMN	swp_day         (swp.static)                  [i(64):nn]
+        COLUMN	swp_hour        (swp.static)                  [i(64):nn]
+        COLUMN	swp_10min       (swp.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLSPLIT(obs_date_str,/(\w+)\s+(\w+)\s+(\d+)\s+\d+\:\d+\:\d+\s*(\w+)\s*(\d+)/,dt_wk,dt_moth,dt_date,dt_tm_zone,dt_year)
+	COLCOPY('Swap Pg Info',swp_severity)
+	COLCOPY('Info',swp_type)
+	COLCOPY('1',swp_sev_idx)
+	COLCOPY('Swap Page',swp_label)
+	COLCOPY('SAR Utility',swp_source)
+	COLCOPY('1',swp_swp)
+
+	COLJOIN (swp_date_str,dt_wk,' ',dt_moth,' ',dt_date,' ',swp_time,' ',dt_tm_zone,' ',dt_year)
+	COLCALC(swp_epoch,STR2TIME,swp_date_str)
+	COLJOIN(swp_md5,swp_epoch,swp_time,swp_pswpin,swp_pswpout)
+	COLCALC(swp_md5,MD5,swp_md5)
+	COLSPLIT(swp_md5, /^((\w{7})\w{9})/, swp_md5, swp_idx)
+	COLCALC(swp_epoch,STR2TIME,swp_date_str)
+	COLCALC(swp_idx, HEX2DEC,swp_idx)
+	COLCALC(swp_epoch,STR2TIME,swp_date_str)
+	COLCALC(swp_qtr, TIME2QTR, swp_epoch)
+        COLCALC(swp_month, STR2MMYY, swp_date_str)
+	COLCALC(swp_30day, TIME2MONTH,swp_epoch)
+        COLCALC(swp_week, TIME2WEEK, swp_epoch)
+        COLCALC(swp_day, TIME2DAY, swp_epoch)
+        COLCALC(swp_hour, TIME2HOUR, swp_epoch)
+        COLCALC(swp_10min, TIME210MIN, swp_epoch)
+	COLDROP(dt_year,dt_date,dt_tm_zone,dt_wk,dt_moth)
+	CONSTRAIN()
+;
+
+#SAMPLE DATA
+#11:20:47 AM       tps      rtps      wtps   bread/s   bwrtn/s
+#11:20:04 AM      8.76      0.00      8.76      0.00    165.52
+#11:30:01 AM      3.78      0.68      3.11     16.68     42.94
+#11:40:01 AM      3.16      0.19      2.97      2.40     39.04
+
+DEFINE TABLE dwps	NAMESPACE	lin.dt.host.dwps	
+	ICON list_basic
+	LINEGRAB /(\d+\:\d+\:\d+\s+\w+)\s+((\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*))/
+	COLUMN	dwp_tm		(dwp.static)	[s(128):n]	<label='Observation Time'>	AS	1
+	COLUMN	dwp_tps		(dwp.static)	[r(64):n]	<label='Tps'>			AS	3
+	COLUMN	dwp_rtps	(dwp.static)	[r(64):n]	<label='Rtps'>			AS	4
+	COLUMN	dwp_wtps	(dwp.static)	[r(64):n]	<label='Wtps'>			AS	5
+	COLUMN	dwp_brd		(dwp.static)	[r(64):n]	<label='Bread/s'>		AS	6
+	COLUMN	dwp_bwt		(dwp.static)	[r(64):n]	<label='Bwrtn/s'>		AS	7
+	COLUMN  obs_date_str    (obs.static)    [s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    		[s(128):nn]	<label='Hardware Address'>
+	COLUMN	dp_year				[i(64):n]
+	COLUMN	dp_date				[i(64):n]
+	COLUMN	dp_tm_zone			[s(128):n]
+	COLUMN	dp_wk				[s(128):n]
+	COLUMN	dp_moth				[s(128):n]
+
+	COLUMN	dwp_date_str	(dwp.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	dwp_text	(dwp.static)	[s(2048):n]	<label='Event Text'>		AS	2
+	COLUMN	dwp_severity	(dwp.static)	[s(128):n]	<label='Event Severity'>
+	COLUMN	dwp_sev_idx	(dwp.static)	[i(64):n]	<label='Event Index'>	
+	COLUMN 	dwp_type 	(dwp.static)	[s(32):n]	<label='Event Type'>
+	COLUMN	dwp_label	(dwp.static)	[s(256):n]	<label='Event Label'>
+	COLUMN	dwp_source	(dwp.static)	[s(64):n]	<label='Event Source'>	
+	COLUMN	dwp_dwp		(dwp.static:dwpgr)	[i(64):n]	<label='Event Grouping'>
+
+	COLUMN	dwp_epoch       (dwp.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	dwp_idx         (dwp.static)                  [i(64):nn]
+        COLUMN	dwp_md5         (dwp.static)                  [s(16):nn]
+        COLUMN	dwp_qtr         (dwp.static)                  [i(64):nn]
+        COLUMN	dwp_month       (dwp.static)                  [i(64):nn]
+	COLUMN	dwp_30day 	(dwp.static) 		      [i(64):nn]
+        COLUMN	dwp_week        (dwp.static)                  [i(64):nn]
+        COLUMN	dwp_day         (dwp.static)                  [i(64):nn]
+        COLUMN	dwp_hour        (dwp.static)                  [i(64):nn]
+        COLUMN	dwp_10min       (dwp.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLSPLIT(obs_date_str,/(\w+)\s+(\w+)\s+(\d+)\s+\d+\:\d+\:\d+\s*(\w+)\s*(\d+)/,dp_wk,dp_moth,dp_date,dp_tm_zone,dp_year)
+	COLCOPY('DWP Info',dwp_severity)
+	COLCOPY('1',dwp_sev_idx)
+	COLCOPY('Info',dwp_type)
+	COLCOPY('Block rd and write',dwp_label)
+	COLCOPY('SAR Utility',dwp_source)
+	COLCOPY('1',dwp_dwp)
+
+	COLJOIN(dwp_date_str,dp_wk,' ',dp_moth,' ',dp_date,' ',dwp_tm,' ',dp_tm_zone,' ',dp_year)
+	COLCALC(dwp_epoch,STR2TIME,dwp_date_str)
+	COLJOIN(dwp_md5,dwp_epoch,dwp_tm,dwp_tps,dwp_rtps,dwp_wtps,dwp_brd,dwp_bwt)
+	COLCALC(dwp_md5,MD5,dwp_md5)
+	COLSPLIT(dwp_md5, /^((\w{7})\w{9})/, dwp_md5, dwp_idx)
+	COLCALC(dwp_epoch,STR2TIME,dwp_date_str)
+	COLCALC(dwp_idx, HEX2DEC,dwp_idx)
+	COLCALC(dwp_epoch,STR2TIME,dwp_date_str)
+	COLCALC(dwp_qtr, TIME2QTR, dwp_epoch)
+        COLCALC(dwp_month, STR2MMYY, dwp_date_str)
+	COLCALC(dwp_30day, TIME2MONTH,dwp_epoch)
+        COLCALC(dwp_week, TIME2WEEK, dwp_epoch)
+        COLCALC(dwp_day, TIME2DAY, dwp_epoch)
+        COLCALC(dwp_hour, TIME2HOUR, dwp_epoch)
+        COLCALC(dwp_10min, TIME210MIN, dwp_epoch)
+	COLDROP(dp_year,dp_date,dp_tm_zone,dp_wk,dp_moth)
+	CONSTRAIN()
+;
+
+DEFINE TABLE inode_sb	NAMESPACE lin.dt.host.inode
+	ICON list_basic
+	LINEGRAB /(\d+\:\d+\:\d+\s+\w{0,2})\s+((\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+\.?\d*)\s+(\d+)\s+(\d+\.?\d*)\s+(\d+)\s+(\d+\.?\d*))/
+	COLUMN	isb_time	(isb.static)	[s(128):n]	<label='Obs TIME'>	AS	1
+	COLUMN	isb_den		(isb.static)	[i(64):n]	<label='dentunusd'>	AS	3	
+	COLUMN	isb_fz		(isb.static)	[i(64):n]	<label='file-sz'>	AS	4
+	COLUMN	isb_in_sz	(isb.static)	[i(64):n]	<label='inode-sz'>	AS	5
+	COLUMN	isb_sup_sz	(isb.static)	[i(64):n]	<label='super-sz'>	AS	6
+	COLUMN	isb_per_sup_sz	(isb.static)	[r(64):n]	<label='%super-sz'>	AS	7
+	COLUMN	isb_dq_sz	(isb.static)	[i(64):n]	<label='dquot-sz'>	AS	8
+	COLUMN	isb_per_dq_sz	(isb.static)	[r(64):n]	<label='%dquot-sz'>	AS	9
+	COLUMN	isb_rtsig	(isb.static)	[i(64):n]	<label='rtsig-sz'>	AS	10
+	COLUMN	isb_per_rtsig	(isb.static)	[r(64):n]	<label='%rtsig-sz'>	AS	11
+	COLUMN  obs_date_str    (obs.static)    [s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    		[s(128):nn]	<label='Hardware Address'>
+	COLUMN	isb_yr				[i(64):n]
+	COLUMN	isb_dt				[i(64):n]
+	COLUMN	isb_tm_zone			[s(128):n]
+	COLUMN	isb_wk				[s(128):n]
+	COLUMN	isb_moth			[s(128):n]
+
+	COLUMN	isb_date_str	(isb.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	isb_text	(isb.static)	[s(2048):n]	<label='Event Text'>		AS	2
+	COLUMN	isb_severity	(isb.static)	[s(128):n]	<label='Event Severity'>
+	COLUMN	isb_sev_idx	(isb.static)	[i(64):n]	<label='Event Index'>	
+	COLUMN 	isb_type 	(isb.static)	[s(32):n]	<label='Event Type'>
+	COLUMN	isb_label	(isb.static)	[s(256):n]	<label='Event Label'>
+	COLUMN	isb_source	(isb.static)	[s(64):n]	<label='Event Source'>	
+	COLUMN	isb_isb		(isb.static:isbgr)	[i(64):n]	<label='Event Grouping'>
+
+	COLUMN	isb_epoch       (isb.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	isb_idx         (isb.static)                  [i(64):nn]
+        COLUMN	isb_md5         (isb.static)                  [s(16):nn]
+        COLUMN	isb_qtr         (isb.static)                  [i(64):nn]
+        COLUMN	isb_month       (isb.static)                  [i(64):nn]
+	COLUMN	isb_30day 	(isb.static) 		      [i(64):nn]
+        COLUMN	isb_week        (isb.static)                  [i(64):nn]
+        COLUMN	isb_day         (isb.static)                  [i(64):nn]
+        COLUMN	isb_hour        (isb.static)                  [i(64):nn]
+        COLUMN	isb_10min       (isb.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLSPLIT(obs_date_str,/(\w+)\s+(\w+)\s+(\d+)\s+\d+\:\d+\:\d+\s*(\w+)\s*(\d+)/,isb_wk,isb_moth,isb_dt,isb_tm_zone,isb_yr)
+	COLJOIN (isb_date_str,isb_wk,' ',isb_moth,' ',isb_dt,' ',isb_time,' ',isb_tm_zone,' ',isb_yr)
+	COLCOPY('Inode, file block used',isb_severity)
+	COLCOPY('1',isb_sev_idx)
+	COLCOPY('Info',isb_type)
+	COLCOPY('ISB Label',isb_label)
+	COLCOPY('SAR Utility',isb_source)
+	COLCOPY('1',isb_isb)
+	COLCALC(isb_epoch,STR2TIME,isb_date_str)
+	COLJOIN(isb_md5,isb_epoch,isb_time,isb_den,isb_fz,isb_in_sz,isb_sup_sz,isb_per_sup_sz,isb_dq_sz,isb_per_dq_sz,isb_rtsig,isb_per_rtsig)
+	COLCALC(isb_md5,MD5,isb_md5)
+	COLSPLIT(isb_md5, /^((\w{7})\w{9})/, isb_md5, isb_idx)
+	COLCALC(isb_idx, HEX2DEC,isb_idx)
+	COLCALC(isb_qtr, TIME2QTR, isb_epoch)
+        COLCALC(isb_month, STR2MMYY, isb_date_str)
+	COLCALC(isb_30day, TIME2MONTH,isb_epoch)
+        COLCALC(isb_week, TIME2WEEK, isb_epoch)
+        COLCALC(isb_day, TIME2DAY, isb_epoch)
+        COLCALC(isb_hour, TIME2HOUR, isb_epoch)
+        COLCALC(isb_10min, TIME210MIN, isb_epoch)
+	COLDROP(isb_yr,isb_dt,isb_tm_zone,isb_wk,isb_moth)
+	CONSTRAIN()
+;
+
+DEFINE TABLE sck_bk	NAMESPACE	lin.dt.host.sck
+	ICON	list_basic
+	LINEGRAB /(\d+\:\d+\:\d+\s+\w{0,2})\s+((\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+))/
+	COLUMN	sck_time	(sck.static)	[s(128):n]	<label='SOCKET OBS Time'>	AS	1		
+	COLUMN	sck_totsk	(sck.static)	[i(64):n]	<label='Totsck'>		AS	3	
+	COLUMN	sck_tcpsk	(sck.static)	[i(64):n]	<label='Tcpsck'>		AS	4	
+	COLUMN	sck_udpsk	(sck.static)	[i(64):n]	<label='Udpsck'>		AS	5	
+	COLUMN	sck_rowsk	(sck.static)	[i(64):n]	<label='Rawsck'>		AS	6	
+	COLUMN	sck_ip_rag	(sck.static)	[i(64):n]	<label='Ip-frag'>		AS	7	
+	COLUMN  obs_date_str    (obs.static)    [s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    [s(128):nn]	<label='Hardware Address'>
+	COLUMN	sck_yr				[i(64):n]
+	COLUMN	sck_dt				[i(64):n]
+	COLUMN	sck_tm_zone			[s(128):n]
+	COLUMN	sck_wk				[s(128):n]
+	COLUMN	sck_moth			[s(128):n]
+
+	COLUMN	sck_date_str	(sck.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	sck_text	(sck.static)	[s(2048):n]	<label='Event Text'>		AS	2
+	COLUMN	sck_severity	(sck.static)	[s(128):n]	<label='Event Severity'>
+	COLUMN	sck_sev_idx	(sck.static)	[i(64):n]	<label='Event Index'>	
+	COLUMN 	sck_type 	(sck.static)	[s(32):n]	<label='Event Type'>
+	COLUMN	sck_label	(sck.static)	[s(256):n]	<label='Event Label'>
+	COLUMN	sck_source	(sck.static)	[s(64):n]	<label='Event Source'>	
+	COLUMN	sck_sck		(sck.static:sckgr)	[i(64):n]	<label='Event Grouping'>
+
+	COLUMN	sck_epoch       (sck.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	sck_idx         (sck.static)                  [i(64):nn]
+        COLUMN	sck_md5         (sck.static)                  [s(16):nn]
+        COLUMN	sck_qtr         (sck.static)                  [i(64):nn]
+        COLUMN	sck_month       (sck.static)                  [i(64):nn]
+	COLUMN	sck_30day 	(sck.static) 		      [i(64):nn]
+        COLUMN	sck_week        (sck.static)                  [i(64):nn]
+        COLUMN	sck_day         (sck.static)                  [i(64):nn]
+        COLUMN	sck_hour        (sck.static)                  [i(64):nn]
+        COLUMN	sck_10min       (sck.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLSPLIT(obs_date_str,/(\w+)\s+(\w+)\s+(\d+)\s+\d+\:\d+\:\d+\s*(\w+)\s*(\d+)/,sck_wk,sck_moth,sck_dt,sck_tm_zone,sck_yr)
+	COLJOIN (sck_date_str,sck_wk,' ',sck_moth,' ',sck_dt,' ',sck_time,' ',sck_tm_zone,' ',sck_yr)
+	COLCALC(sck_epoch,STR2TIME,sck_date_str)
+	COLJOIN(sck_md5,sck_epoch,sck_time,sck_den,sck_fz,sck_in_sz,sck_sup_sz,sck_per_sup_sz,sck_dq_sz,sck_per_dq_sz,sck_rtsig,sck_per_rtsig)
+	COLCALC(sck_md5,MD5,sck_md5)
+	COLSPLIT(sck_md5, /^((\w{7})\w{9})/, sck_md5, sck_idx)
+
+	COLCOPY('Num of sockets Info',sck_severity)
+	COLCOPY('1',sck_sev_idx)
+	COLCOPY('Info',sck_type)
+	COLCOPY('Num of sockets & its breakup',sck_label)
+	COLCOPY('SAR Utility',sck_source)
+	COLCOPY('1',sck_sck)
+
+	COLCALC(sck_epoch,STR2TIME,sck_date_str)
+	COLCALC(sck_idx, HEX2DEC,sck_idx)
+	COLCALC(sck_qtr, TIME2QTR, sck_epoch)
+        COLCALC(sck_month, STR2MMYY, sck_date_str)
+	COLCALC(sck_30day, TIME2MONTH,sck_epoch)
+        COLCALC(sck_week, TIME2WEEK, sck_epoch)
+        COLCALC(sck_day, TIME2DAY, sck_epoch)
+        COLCALC(sck_hour, TIME2HOUR, sck_epoch)
+        COLCALC(sck_10min, TIME210MIN, sck_epoch)
+	COLDROP(sck_yr,sck_dt,sck_tm_zone,sck_wk,sck_moth)
+	CONSTRAIN()
+;
+
+DEFINE TABLE process_ld_time	NAMESPACE	lin.dt.host.prold
+	ICON	list_basic
+	LINEGRAB	/(\d+\:\d+\:\d+\s+\w{0,2})\s+((\d+)\s+(\d+)\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*))/
+	COLUMN	prold_tm	(prold.static)	[s(128):nn]	<label='Processes Obs Time'>	AS	1
+	COLUMN	prold_ruq_sz	(prold.static)	[i(64):nn]	<label='runq-sz'>		AS	3
+	COLUMN	prold_plist_sz	(prold.static)	[i(64):nn]	<label='plist-sz'>		AS	4
+	COLUMN	prold_ldavg_one	(prold.static)	[r(64):nn]	<label='ldavg-1'>		AS	5
+	COLUMN	prold_ldavg_two	(prold.static)	[r(64):nn]	<label='ldavg-5'>		AS	6
+	COLUMN	prold_ldavg_tre	(prold.static)	[r(64):nn]	<label='ldavg-15'>		AS	7
+	COLUMN  obs_date_str    (obs.static)    [s(64):nn]	
+	COLUMN	sys_hwaddr      (sys.static)    [s(128):nn]	<label='Hardware Address'>
+	COLUMN	prold_yr			[i(64):n]
+	COLUMN	prold_dt			[i(64):n]
+	COLUMN	prold_tm_zone			[s(128):n]
+	COLUMN	prold_wk			[s(128):n]
+	COLUMN	prold_moth			[s(128):n]
+
+	COLUMN	prold_date_str	(prold.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	prold_text	(prold.static)	[s(2048):n]	<label='Event Text'>		AS	2
+	COLUMN	prold_severity	(prold.static)	[s(128):n]	<label='Event Severity'>
+	COLUMN	prold_sev_idx	(prold.static)	[i(64):n]	<label='Event Index'>	
+	COLUMN 	prold_type 	(prold.static)	[s(32):n]	<label='Event Type'>
+	COLUMN	prold_label	(prold.static)	[s(256):n]	<label='Event Label'>
+	COLUMN	prold_source	(prold.static)	[s(64):n]	<label='Event Source'>	
+	COLUMN	prold_prold	(prold.static:proldgr)	[i(64):n]	<label='Event Grouping'>
+
+	COLUMN	prold_epoch       (prold.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	prold_idx         (prold.static)                  [i(64):nn]
+        COLUMN	prold_md5         (prold.static)                  [s(16):nn]
+        COLUMN	prold_qtr         (prold.static)                  [i(64):nn]
+        COLUMN	prold_month       (prold.static)                  [i(64):nn]
+	COLUMN	prold_30day 	  (prold.static)  	          [i(64):nn]
+        COLUMN	prold_week        (prold.static)                  [i(64):nn]
+        COLUMN	prold_day         (prold.static)                  [i(64):nn]
+        COLUMN	prold_hour        (prold.static)                  [i(64):nn]
+        COLUMN	prold_10min       (prold.static)                  [i(64):nn]
+
+	ADD_CONTEXT(obs_date_str,sys_hwaddr)
+	COLSPLIT(obs_date_str,/(\w+)\s+(\w+)\s+(\d+)\s+\d+\:\d+\:\d+\s*(\w+)\s*(\d+)/,prold_wk,prold_moth,prold_dt,prold_tm_zone,prold_yr)
+
+	COLCOPY('Processes load Info',prold_severity)
+	COLCOPY('1',prold_sev_idx)
+	COLCOPY('Info',prold_type)
+	COLCOPY('Processes load Info',prold_label)
+	COLCOPY('SAR Utility',prold_source)
+	COLCOPY('1',prold_prold)
+
+	COLJOIN (prold_date_str,prold_wk,' ',prold_moth,' ',prold_dt,' ',prold_tm,' ',prold_tm_zone,' ',prold_yr)
+	COLCALC(prold_epoch,STR2TIME,prold_date_str)
+	COLJOIN(prold_md5,prold_epoch,prold_tm,prold_den,prold_fz,prold_in_sz,prold_sup_sz,prold_per_sup_sz,prold_dq_sz,prold_per_dq_sz,prold_rtsig,prold_per_rtsig)
+	COLCALC(prold_md5,MD5,prold_md5)
+	COLSPLIT(prold_md5, /^((\w{7})\w{9})/, prold_md5, prold_idx)
+	COLCALC(prold_epoch,STR2TIME,prold_date_str)
+	COLCALC(prold_idx, HEX2DEC,prold_idx)
+	COLCALC(prold_qtr, TIME2QTR, prold_epoch)
+        COLCALC(prold_month, STR2MMYY, prold_date_str)
+	COLCALC(prold_30day, TIME2MONTH,prold_epoch)
+        COLCALC(prold_week, TIME2WEEK, prold_epoch)
+        COLCALC(prold_day, TIME2DAY, prold_epoch)
+        COLCALC(prold_hour, TIME2HOUR, prold_epoch)
+        COLCALC(prold_10min, TIME210MIN, prold_epoch)
+	COLDROP(prold_yr,prold_dt,prold_tm_zone,prold_wk,prold_moth)
+	CONSTRAIN()
+;
+
+###################################### END OF LINUX TABLES #############################################
+
+########################## APACHE TABLES ##############################
+
+#SAMPLE DATA
+#203.92.58.130 - - [12/Dec/2012:01:15:51 -0500] "GET / HTTP/1.1" 200 84
+#203.92.58.130 - - [12/Dec/2012:01:15:51 -0500] "GET /favicon.ico HTTP/1.1" 200 4286
+#203.92.58.130 - - [12/Dec/2012:01:21:19 -0500] "POST /gb/ticketLogin HTTP/1.1" 302 -
+#203.92.58.130 - - [12/Dec/2012:01:21:19 -0500] "GET /main.html HTTP/1.1" 200 4216
+
+DEFINE TABLE apc_table	NAMESPACE	lin.apcl
+	ICON list_basic
+	LINEGRAB /(\d+\.\d+\.\d+\.\d+)\s+([\-\w]+)\s+([\-\w]+)\s+\[(\d+\/\w+\/\d+\:\d+\:\d+\:\d+\s+[\-\+]?\d+)\]\s+\"(\w+)\s+(\S+)\s+(\S+)\"\s+([\d\-]+)\s+([\d\-]+)\s+\"?([\d\-]*)\"?\s*([^\n]*)/
+	COLUMN	apcdate				[i(64):n]
+	COLUMN	apc_mnth			[s(128):n]
+	COLUMN	apc_year			[i(64):n]
+	COLUMN	apc_loctime			[s(128):n]
+	COLUMN	apc_offset			[s(128):n]
+	COLUMN	apc_hr				[i(64):n]	
+	COLUMN	adj_time			[s(512):n]
+	COLUMN	apc_ipaddr	(apc.static)	[s(256):n]	<label='IP address'>		AS	1
+	COLUMN	apc_restime	(apc.static)	[s(256):n]	<label='Time to Respond'>	AS	2
+	#Column name and Label may not be accurate(No data) 
+	COLUMN	apc_cust	(apc.static)	[s(256):n]	<label='Cust'>			AS	3	
+	COLUMN	apc_time	(apc.static)	[s(256):nn]	<label='Time stamp'>		AS	4
+	COLUMN	apc_req_type	(apc.static)	[s(256):n]	<label='Request type'>		AS	5	
+	COLUMN	apc_resource	(apc.static)	[s(256):n]	<label='Resource request'>	AS	6
+	COLUMN	apc_http_ver	(apc.static)	[s(256):n]	<label='HTTP version'>		AS	7
+	COLUMN	apc_http_resno	(apc.static)	[s(256):n]	<label='HTTP response number'>	AS	8
+	COLUMN	apc_byte_ret	(apc.static)	[s(256):n]	<label='Bytes returned'>	AS	9
+	COLUMN	apc_byte_sent	(apc.static)	[s(256):n]	<label='Bytes Sent'>		AS	10
+	COLUMN	apc_related_inf	(apc.static)	[s(512):n]	<label='Related Info'>		AS	11
+	COLUMN	apc_adj_time	(apc.static)	[s(512):n]	<label='Adjusted Time'>
+	COLUMN	apc_adj_epoch	(apc.static)	[i(64):n]	<label='Adjusted Epoch'>
+	COLUMN	sys_apc_epo	(sys.conf)	[i(64):n]	<label='Apache EPOCH'>
+	COLUMN	sys_apc_tmz	(sys.conf)	[s(128):n]	<label='Apache TimeZone'>
+	COLUMN	sys_hwaddr      (sys.static)   	[s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	apc_date_str	(apc.static)	[s(128):nn]	<label='Time Of Observation', facet='E'>
+	COLUMN	apc_text	(apc.static)	[s(2048):n]	<label='APC Text'>
+	COLUMN	apc_severity	(apc.static)	[s(128):n]	<label='APC Severity'>
+	COLUMN	apc_sev_idx	(apc.static)	[i(64):n]	<label='APC Index'>	
+	COLUMN 	apc_type 	(apc.static)	[s(32):n]	<label='APC Type'>
+	COLUMN	apc_label	(apc.static)	[s(256):n]	<label='APC Label'>
+	COLUMN	apc_source	(apc.static)	[s(64):n]	<label='APC Source'>	
+	COLUMN	apc_apc		(apc.static:apcgr)	[i(64):n]	<label='APC Grouping'>
+
+	COLUMN	apc_epoch       (apc.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	apc_idx         (apc.static)                  [i(64):nn]
+        COLUMN	apc_md5         (apc.static)                  [s(16):nn]
+        COLUMN	apc_qtr         (apc.static)                  [i(64):nn]
+        COLUMN	apc_month       (apc.static)                  [i(64):nn]
+	COLUMN	apc_30day 	(apc.static) 		      [i(64):nn]
+        COLUMN	apc_week        (apc.static)                  [i(64):nn]
+        COLUMN	apc_day         (apc.static)                  [i(64):nn]
+        COLUMN	apc_hour        (apc.static)                  [i(64):nn]
+        COLUMN	apc_10min       (apc.static)                  [i(64):nn]
+
+	ADD_CONTEXT(sys_hwaddr,sys_apc_epo,sys_apc_tmz)
+	COLSPLIT(apc_time,/(\d+)\/(\w+)\/(\d+)\:(\d+\:\d+\:\d+)\s+([\+\-]?\d+)/,apcdate,apc_mnth,apc_year,apc_loctime,apc_offset)
+	COLJOIN(apc_date_str,apc_mnth,' ',apcdate,' ',apc_loctime,' ','GMT',' ',apc_offset,' ',apc_year)	
+	COLJOIN(apc_md5,apc_epoch,apc_ipaddr,apc_restime,apc_cust,apc_date_str,apc_req_type,apc_resource,apc_http_ver,apc_http_resno,apc_byte_ret)
+	COLCALC(apc_md5,MD5,apc_md5)
+
+	COLCOPY(apc_related_inf,apc_text)
+	COLCOPY('Apache Info',apc_severity)
+	COLCOPY('1',apc_sev_idx)
+	COLCOPY('Info',apc_type)
+	COLCOPY('Apache Info',apc_label)
+	COLCOPY('SAR Utility',apc_source)
+	COLCOPY('1',apc_apc)
+
+	COLSPLIT(apc_md5, /^((\w{7})\w{9})/, apc_md5, apc_idx)
+	COLCALC(apc_idx, HEX2DEC,apc_idx)
+	COLCALC(apc_epoch,STR2TIME,apc_date_str)
+	COLCALC(apc_qtr, TIME2QTR, apc_epoch)
+        COLCALC(apc_month, STR2MMYY, apc_date_str)
+	COLCALC(apc_30day, TIME2MONTH,apc_epoch)
+        COLCALC(apc_week, TIME2WEEK, apc_epoch)
+        COLCALC(apc_day, TIME2DAY, apc_epoch)
+        COLCALC(apc_hour, TIME2HOUR, apc_epoch)
+        COLCALC(apc_10min, TIME210MIN, apc_epoch)
+	COLDROP(adj_time,apcdate,apc_mnth,apc_year,apc_loctime,apc_offset,apc_hr)
+	CONSTRAIN()
+;
+
+########################## END OF APACHE TABLES ##############################
+
+######################################  MYSQL TABLES ##################################################
+
+#SAMPLE DATA
+#130211  6:57:52       2 Query       SELECT DATABASE()
+DEFINE TABLE msql_tb	NAMESPACE	lin.msql.genqr 
+	ICON list_basic
+	LINEGRAB /((\d{2})(\d{2})(\d{2})\s*(\d+\:\d+\:\d+))\s+(\d+)\s+Query([^\n]+)/
+	COLUMN	msgen_time	(msgen.static)	[s(256):n]	<label='Query Start Time'>	AS	1
+	COLUMN	msgen_year			[i(64):n]					AS	2
+	COLUMN	msgen_mth			[i(64):n]					AS	3
+	COLUMN	msgen_dy			[i(64):n]					AS	4
+	COLUMN	msgen_tm			[s(128):n]					AS	5	
+	COLUMN	msgen_id	(msgen.static)	[i(64):n]	<label='ID'>			AS	6
+	COLUMN	msgen_query	(msgen.static)	[s(256):n]	<label='Query'>			AS	7
+	COLUMN	msgen_epval			[s(256):n]
+	COLUMN	str_month			[s(128):n]
+	COLUMN	msql_offset	(sys.static)	[s(128):n]
+	COLUMN	sys_hwaddr      (sys.static)  	[s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	msgen_date_str	(msgen.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	msgen_text	(msgen.static)	[s(2048):n]	<label='MySQL Q Text'>
+	COLUMN	msgen_severity	(msgen.static)	[s(128):n]	<label='MySQL Q  Severity'>
+	COLUMN	msgen_sev_idx	(msgen.static)	[i(64):n]	<label='MySQL Q Index'>	
+	COLUMN 	msgen_type 	(msgen.static)	[s(32):n]	<label='MySQL Q Type'>
+	COLUMN	msgen_label	(msgen.static)	[s(256):n]	<label='MySQL Q Label'>
+	COLUMN	msgen_source	(msgen.static)	[s(64):n]	<label='MySQL Q Source'>	
+	COLUMN	msgen_msgen	(msgen.static:mgegr)	[i(64):n]	<label='MySQL Q Grouping'>
+
+	COLUMN	msgen_epoch       (msgen.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	msgen_idx         (msgen.static)                  [i(64):nn]
+        COLUMN	msgen_md5         (msgen.static)                  [s(16):nn]
+        COLUMN	msgen_qtr         (msgen.static)                  [i(64):nn]
+        COLUMN	msgen_month       (msgen.static)                  [i(64):nn]
+	COLUMN	msgen_30day 	  (msgen.static) 		  [i(64):nn]
+        COLUMN	msgen_week        (msgen.static)                  [i(64):nn]
+        COLUMN	msgen_day         (msgen.static)                  [i(64):nn]
+        COLUMN	msgen_hour        (msgen.static)                  [i(64):nn]
+        COLUMN	msgen_10min       (msgen.static)                  [i(64):nn]
+	ADD_CONTEXT(msql_offset,sys_hwaddr)
+
+	COLMAP(str_month,msgen_mth,/01/,'Jan',str_month)
+	COLMAP(str_month,msgen_mth,/02/,'Feb',str_month)
+	COLMAP(str_month,msgen_mth,/03/,'Mar',str_month)
+	COLMAP(str_month,msgen_mth,/04/,'Apr',str_month)
+	COLMAP(str_month,msgen_mth,/05/,'May',str_month)
+	COLMAP(str_month,msgen_mth,/06/,'Jun',str_month)
+	COLMAP(str_month,msgen_mth,/07/,'Jul',str_month)
+	COLMAP(str_month,msgen_mth,/08/,'Aug',str_month)
+	COLMAP(str_month,msgen_mth,/09/,'Sep',str_month)
+	COLMAP(str_month,msgen_mth,/10/,'Oct',str_month)
+	COLMAP(str_month,msgen_mth,/11/,'Nov',str_month)
+	COLMAP(str_month,msgen_mth,/12/,'Dec',str_month)
+
+	COLCOPY(msgen_query,msgen_text)
+	COLCOPY('MSQL Q Info',msgen_severity)
+	COLCOPY('1',msgen_sev_idx)
+	COLCOPY('Info',msgen_type)
+	COLCOPY('MSQL Q Info',msgen_label)
+	COLCOPY('SAR Utility',msgen_source)
+	COLCOPY('1',msgen_msgen)
+
+	COLJOIN(msgen_date_str,str_month,' ',msgen_dy,' ',msgen_tm,' GMT ',msql_offset,' 20',msgen_year)	
+	COLJOIN(msgen_md5,msgen_id,msgen_query,msgen_time,msgen_epval)
+	COLCALC(msgen_md5,MD5,msgen_md5)
+	COLSPLIT(msgen_md5, /^((\w{7})\w{9})/, msgen_md5, msgen_idx)
+	COLCALC(msgen_epoch,STR2TIME,msgen_date_str)
+	COLCALC(msgen_idx, HEX2DEC,msgen_idx)
+	COLCALC(msgen_qtr, TIME2QTR, msgen_epoch)
+        COLCALC(msgen_month, STR2MMYY, msgen_date_str)
+	COLCALC(msgen_30day, TIME2MONTH,msgen_epoch)
+        COLCALC(msgen_week, TIME2WEEK, msgen_epoch)
+        COLCALC(msgen_day, TIME2DAY, msgen_epoch)
+        COLCALC(msgen_hour, TIME2HOUR, msgen_epoch)
+        COLCALC(msgen_10min, TIME210MIN, msgen_epoch)
+	CONSTRAIN()
+;
+
+#------------------------------------------------------------------------------------------------------------------------
+
+#SAMPLE DATA
+# __ Table Locks _________________________________________________________
+#**Waited              0       0/s  %Total:   0.00
+#**Immediate          12     0.0/s
+DEFINE TABLE mysql_report	NAMESPACE	lin.msql.mqlrep.dml
+	ICON	list_basic
+	LINEGRAB /(DMS\s+(\d+)\s+(\d+\.?\d*)\/s\s*\d+\.?\d*[^\n]*\n\s*\w+\s+\d+\s+\d+\.?\d*\/s\s*\d+\.?\d*\s*\d+\.\d*[^\n]*\n\s*\w+\s+\d+\s+\d+\.?\d*\/s\s*\d+\.?\d*\s*\d+\.\d*[^\n]*\n\s*\w+\s+\d+\s+\d+\.?\d*\/s\s*\d+\.?\d*\s*\d+\.\d*[^\n]*\n\s*\w+\s+\d+\s+\d+\.?\d*\/s\s*\d+\.?\d*\s*\d+\.\d*[^\n]*\n\s*\w+\s+\d+\s+\d+\.?\d*\/s\s*\d+\.?\d*\s*\d+\.\d*)/
+	COLUMN	mrep_temp_dt			[s(1024):n]				AS	1
+	COLUMN	mrep_nosdms	(mrep.static)	[i(64):n]	<label='NO of DMS'>	AS	2
+	COLUMN	mrep_nosdmsps			[r(64):n]				AS	3
+	COLUMN	mrep_nossel	(mrep.static)	[i(64):n]	<label='NO of SELECT'>	
+	COLUMN	mrep_nosselps			[r(64):n]			
+	COLUMN	mrep_nosrep	(mrep.static)	[i(64):n]	<label='NO of REPLACE'>	
+	COLUMN	mrep_nosrepps			[r(64):n]				
+	COLUMN	mrep_nosdel	(mrep.static)	[i(64):n]	<label='NO of DELETE'>
+	COLUMN	mrep_nosdelps			[r(64):n]			
+	COLUMN	mrep_nosins	(mrep.static)	[i(64):n]	<label='NO of INSERT'>
+	COLUMN	mrep_nosinsps			[r(64):n]			
+	COLUMN	mrep_nosupd	(mrep.static)	[i(64):n]	<label='NO of UPDATE'>
+	COLUMN	mrep_nosupdps			[r(64):n]			
+	COLUMN	mysql_rep_tm			[s(256):n]	
+	COLUMN	sys_hwaddr      (sys.static)    [s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	mrep_date_str	(mrep.static)	[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	mrep_text	(mrep.static)	[s(2048):n]	<label='APC Text'>
+	COLUMN	mrep_severity	(mrep.static)	[s(128):n]	<label='APC Severity'>
+	COLUMN	mrep_sev_idx	(mrep.static)	[i(64):n]	<label='APC Index'>	
+	COLUMN 	mrep_type 	(mrep.static)	[s(32):n]	<label='APC Type'>
+	COLUMN	mrep_label	(mrep.static)	[s(256):n]	<label='APC Label'>
+	COLUMN	mrep_source	(mrep.static)	[s(64):n]	<label='APC Source'>	
+	COLUMN	mrep_mrep	(mrep.static:mrepgr)	[i(64):n]	<label='APC Grouping'>
+	
+	COLUMN	mrep_epoch       (mrep.static)                  [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	mrep_idx         (mrep.static)                  [i(64):nn]
+        COLUMN	mrep_md5         (mrep.static)                  [s(16):nn]
+        COLUMN	mrep_qtr         (mrep.static)                  [i(64):nn]
+        COLUMN	mrep_month       (mrep.static)                  [i(64):nn]
+	COLUMN	mrep_30day 	 (mrep.static) 		  	[i(64):nn]
+        COLUMN	mrep_week        (mrep.static)                  [i(64):nn]
+        COLUMN	mrep_day         (mrep.static)                  [i(64):nn]
+        COLUMN	mrep_hour        (mrep.static)                  [i(64):nn]
+        COLUMN	mrep_10min       (mrep.static)                  [i(64):nn]
+	ADD_CONTEXT(mysql_rep_tm,sys_hwaddr)
+	COLCOPY(mysql_rep_tm,mrep_date_str)
+	COLCOPY(mrep_temp_dt,mrep_text)
+	COLSPLIT(mrep_temp_dt,/SELECT\s+(\d+)\s+(\d+\.?\d*)\/s\s*\d+\.?\d*\s*\d+\.\d*/,mrep_nossel,mrep_nosselps)
+	COLSPLIT(mrep_temp_dt,/REPLACE\s+(\d+)\s+(\d+\.?\d*)\/s\s*\d+\.?\d*\s*\d+\.\d*/,mrep_nosrep,mrep_nosrepps)
+	COLSPLIT(mrep_temp_dt,/DELETE\s+(\d+)\s+(\d+\.?\d*)\/s\s*\d+\.?\d*\s*\d+\.\d*/,mrep_nosdel,mrep_nosdelps)
+	COLSPLIT(mrep_temp_dt,/INSERT\s+(\d+)\s+(\d+\.?\d*)\/s\s*\d+\.?\d*\s*\d+\.\d*/,mrep_nosins,mrep_nosinsps)
+	COLSPLIT(mrep_temp_dt,/UPDATE\s+(\d+)\s+(\d+\.?\d*)\/s\s*\d+\.?\d*\s*\d+\.\d*/,mrep_nosupd,mrep_nosupdps)
+	COLCALC(mrep_epoch,STR2TIME,mrep_date_str)
+	COLJOIN(mrep_md5,mrep_nosdms,mrep_nossel,mrep_nosrep,mrep_nosdel,mrep_nosins,mrep_nosupd,mrep_epoch)
+	COLCALC(mrep_md5,MD5,mrep_md5)
+
+	COLCOPY('MSQL R Info',mrep_severity)
+	COLCOPY('1',mrep_sev_idx)
+	COLCOPY('Info',mrep_type)
+	COLCOPY('MSQL R Info',mrep_label)
+	COLCOPY('SAR Utility',mrep_source)
+	COLCOPY('1',mrep_mrep)
+
+	COLSPLIT(mrep_md5, /^((\w{7})\w{9})/, mrep_md5, mrep_idx)
+	COLCALC(mrep_idx, HEX2DEC,mrep_idx)
+	COLCALC(mrep_qtr, TIME2QTR, mrep_epoch)
+        COLCALC(mrep_month, STR2MMYY, mrep_date_str)
+	COLCALC(mrep_30day, TIME2MONTH,mrep_epoch)
+        COLCALC(mrep_week, TIME2WEEK, mrep_epoch)
+        COLCALC(mrep_day, TIME2DAY, mrep_epoch)
+        COLCALC(mrep_hour, TIME2HOUR, mrep_epoch)
+        COLCALC(mrep_10min, TIME210MIN, mrep_epoch)
+	COLDROP(mrep_temp_dt,mysql_rep_tm)
+	CONSTRAIN()
+;
+
+DEFINE TABLE mysql_rt_two	NAMESPACE	lin.msql.mqlrep.tl
+	ICON list_basic
+	LINEGRAB/Waited\s+(\d+)\s+(\d+\.?\d*)\/s\s*\%Total\:\s*\d+\.?\d*[^\n]*\n\s*Immediate\s+(\d+)\s+(\d+\.?\d*)\/s/
+	COLUMN	mrep_waited	(mrep.static)	[i(64):n]	<label ='Waited'>		AS	1
+	COLUMN	mrep_waitedps			[r(64):n]	<label ='Waited per Sec'>	AS	2
+	COLUMN	mrep_immed	(mrep.static)	[i(64):n]	<label ='Immediate'>		AS	3
+	COLUMN	mrep_immedps	 	 	[r(64):n]	<label ='Immediate Per sec'>	AS	4
+	CONSTRAIN()
+;
+
+DEFINE TABLE mysql_rt_three	NAMESPACE	lin.msql.mqlrep.tab
+	ICON list_basic
+	LINEGRAB/Open\s+(\d+)\s+of\s*\d+[^\n]*\n\s*Opened\s+(\d+)\s+(\d+\.?\d*)\/s/
+	COLUMN	mrep_open	(mrep.static)	[i(64):n]	<label ='Open'>			AS	1
+	COLUMN	mrep_opened	(mrep.static)	[i(64):n]	<label ='Opened'>		AS	2
+	COLUMN	mrep_openedps	 	 	[r(64):n]	<label ='Opened per Sec'>	AS	3
+	CONSTRAIN()
+;
+
+DEFINE TABLE mysql_rt_four	NAMESPACE	lin.msql.mqlrep.conn
+	ICON list_basic
+	LINEGRAB/Max\s*used\s+(\d+)\s+of\s*\d+[^\n]*\n\s*Total\s+(\d+)\s+(\d+\.?\d*)\/s/
+	COLUMN	mrep_used	(mrep.static)	[i(64):n]	<label ='Max used'>		AS	1
+	COLUMN	mrep_tot	(mrep.static)	[i(64):n]	<label ='Total'>		AS	2
+	COLUMN	mrep_totps	 	 	[r(64):n]	<label ='Total per Sec'>	AS	3
+	CONSTRAIN()
+;
+
+DEFINE TABLE mysql_rt_five	NAMESPACE	lin.msql.mqlrep.thread
+	ICON list_basic
+	LINEGRAB/Running\s+(\d+)\s+of\s*\d+[^\n]*/
+	COLUMN	mrep_runn	(mrep.static)	[i(64):n]	<label ='Threads Running'>	AS	1
+	CONSTRAIN()
+;
+
+DEFINE TABLE mysql_rt_six	NAMESPACE	lin.msql.mqlrep.abort
+	ICON list_basic
+	LINEGRAB/Clients\s+(\d+)\s*(\d+\.?\d*)\/s[^\n]*\n\s*Connects\s+(\d+)\s+(\d+\.?\d*)\/s/
+	COLUMN	mrep_cli	(mrep.static)	[i(64):n]	<label ='Clients'>		AS	1
+	COLUMN	mrep_clips			[r(64):n]	<label ='Clients Per Sec'>	AS	2
+	COLUMN	mrep_conn	(mrep.static)	[i(64):n]	<label ='Connects'>		AS	3
+	COLUMN	mrep_connps		 	[r(64):n]	<label ='Connects per Sec'>	AS	4
+	CONSTRAIN()
+;
+
+DEFINE TABLE mysql_rt_seven	NAMESPACE	lin.msql.mqlrep.bytes
+	ICON list_basic
+	LINEGRAB/Sent\s+(\d+\.?\d*)k\s+(\d+\.?\d*)\/s[^\n]*\n\s*Received\s+(\d+\.?\d*)k\s+(\d+\.?\d*)\/s/
+	COLUMN	mrep_bt_sent	(mrep.static)	[r(64):n]	<label ='Bytes Sent'>			AS	1
+	COLUMN	mrep_bt_sentps			[r(64):n]	<label ='Bytes Sent Per sec'>		AS	2
+	COLUMN	mrep_bt_rec	(mrep.static)	[r(64):n]	<label ='Bytes Received'>		AS	3
+	COLUMN	mrep_bt_recps	 	 	[r(64):n]	<label ='Bytes Recevied Per sec'>	AS	4
+	CONSTRAIN()
+;
+
+#
+####$$
+##There is un resolved issue with the LINEGRAB. once it is resolved will update the table
+#
+#DEFINE TABLE mysql_rt_eight	NAMESPACE	lin.msql.mqlrep.innbuffpl
+#	ICON list_basic
+###	LINEGRAB /([^\n]*)/
+#	LINEGRAB/Usage\s+(\d+\.?\d*)k\s*of\s*\d+\.?\d*\w+\s+\%Used\:\s*(\d+\.?\d*)[^\n]*\s*Read\s*hit\s*(\d+\.?\d*)\%[^\n]*\s*Pages[^\n]*\s*Free\s*(\d+)\s+\%Total\:\s*\d+\.?\d*[^\n]*\s*Data\s*(\d+)\s*\d+\.?\d*\s*\%Drty\:\s*\d+\.\d*[^\n]*\s*Misc\s*(\d+)\s*\d+\.?\d*[^\n]*\s*Latched\s*(\d+)\s*\d+\.?\d*[^\n]*\s*Reads\s*(\d+)\s+(\d+\.?\d*)\/s[^\n]*\s*From\s*file\s*(\d+)\s*(\d+\.?\d*)/s\s*\d+\.?\d*[^\n]*\s*Ahead\s*Rnd\s*(\d+)\s*(\d+\.?\d*)\/s[^\n]*\s*Ahead\s*Sql\s*(\d+)\s*(\d+)\/s[^\n]*\s*Writes\s*(\d+)\s*(\d+)\/s[^\n]*\s*Flushes\s*(\d+)\s*(\d+)\/s[^\n]*\s*Wait\s+Free\s*(\d+)\s*(\d+)\/s[^\n]*/
+#
+##	COLUMN	some_data		[s(1024):n]	AS	1
+
+
+#	COLUMN	mrep_indb_used		(mrep.static)	[r(64):n]	<label ='InnoDB Buff Pool'>		AS	1
+#	COLUMN	mrep_indb_usdper	(mrep.static)	[r(64):n]	<label ='InnoDB Buff Pool % Used'>	AS	2
+#	COLUMN	mrep_indb_rdht		(mrep.static)	[r(64):n]	<label ='InnoDB Buff Pool Read hit'>	AS	3
+#	COLUMN	mrep_indb_pgfr		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Pg Free'>	AS	4
+#	COLUMN	mrep_indb_dt		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Pg Data'>	AS	5
+#	COLUMN	mrep_indb_misc		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Pg Misc'>	AS	6
+#	COLUMN	mrep_indb_lat		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Pg Latched'>	AS	7
+#	COLUMN	mrep_indb_rds		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Reads'>	AS	8
+#	COLUMN	mrep_indb_rdsps		(mrep.static)	[r(64):n]	<label ='InnoDB Buff Pool Reads/s'>	AS	9
+#	COLUMN	mrep_indb_rdfls		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Rd Files'>	AS	10
+#	COLUMN	mrep_indb_rdflsps	(mrep.static)	[r(64):n]	<label ='InnoDB Buff Pool Rd Files/s'>	AS	11
+#	COLUMN	mrep_indb_rnd		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Ahead Rnd'>	AS	12
+#	COLUMN	mrep_indb_rndps		(mrep.static)	[r(64):n]	<label ='InnoDB Buff Pool Ahead Rnd/s'>	AS	13
+#	COLUMN	mrep_indb_sql		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Ahead Sql'>	AS	14
+#	COLUMN	mrep_indb_sqlps		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Ahead Sql/s'>	AS	15
+#	COLUMN	mrep_indb_wr		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Writes'>	AS	16
+#	COLUMN	mrep_indb_wrps		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Writes/s'>	AS	17
+#	COLUMN	mrep_indb_fls		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Flushes'>	AS	18
+#	COLUMN	mrep_indb_flsps		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Flushes/s'>	AS	19
+#	COLUMN	mrep_indb_wt		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Wait Free'>	AS	20
+#	COLUMN	mrep_indb_wtps		(mrep.static)	[i(64):n]	<label ='InnoDB Buff Pool Wait Free/s'> AS	21
+#	CONSTRAIN()
+#;
+####$$
+#
+
+#SAMPLE DATA
+## Time: 030207 15:03:33
+## Query_time: 13  Lock_time: 0  Rows_sent: 0  Rows_examined: 0
+#SELECT l FROM un WHERE ip='209.xx.xxx.xx';
+
+#NOTE
+#TimeZone needs to be corrected
+DEFINE TABLE slow_query_tb	NAMESPACE	lin.msql.slow_query	
+	ICON list_basic
+	LINEGRAB /\#\s*Query\_time\:\s*(\d+)\s+Lock\_time\:\s*(\d+)\s*Rows\_sent\:\s*(\d+)\s*Rows\_examined\:\s*(\d+)[^\n]*\n([^\n]*)/
+	COLUMN	slw_query	(slw.static)		[s(256):n]	<label='Query'>		AS	1	
+	COLUMN	slw_qur_tim	(slw.static)		[i(64):n]	<label='Query_time'>	AS	2
+	COLUMN	slw_qur_lk	(slw.static)		[i(64):n]	<label='Lock_time'>	AS	3
+	COLUMN	slw_qur_row_st	(slw.static)		[i(64):n]	<label='Rows_sent'>	AS	4
+	COLUMN	slw_qur_row_ex	(slw.static)		[i(64):n]	<label='Rows_examined'>	AS	5
+	COLUMN	slw_yer					[i(64):n]			
+	COLUMN	slw_mth					[s(32):n]			
+	COLUMN	slw_dy					[r(64):n]			
+	COLUMN	slw_tim					[s(64):n]			
+	COLUMN	msql_offset	(sys.static)		[s(128):n]
+	COLUMN	sys_hwaddr      (sys.static)    	[s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	slw_date_str	(slw.static)		[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	slw_text	(slw.static)		[s(2048):n]	<label='SLW Text'>
+	COLUMN	slw_severity	(slw.static)		[s(128):n]	<label='SLW Severity'>
+	COLUMN	slw_sev_idx	(slw.static)		[i(64):n]	<label='SLW Index'>	
+	COLUMN 	slw_type 	(slw.static)		[s(32):n]	<label='SLW Type'>
+	COLUMN	slw_label	(slw.static)		[s(256):n]	<label='SLW Label'>
+	COLUMN	slw_source	(slw.static)		[s(64):n]	<label='SLW Source'>	
+	COLUMN	slw_slw		(slw.static:slwgr)	[i(64):n]	<label='SLW Grouping'>
+
+	COLUMN	slw_epoch       (slw.static)            [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	slw_idx         (slw.static)            [i(64):nn]
+        COLUMN	slw_md5         (slw.static)            [s(16):nn]
+        COLUMN	slw_qtr         (slw.static)            [i(64):nn]
+        COLUMN	slw_month       (slw.static)            [i(64):nn]
+	COLUMN	slw_30day 	(slw.static) 		[i(64):nn]
+        COLUMN	slw_week        (slw.static)            [i(64):nn]
+        COLUMN	slw_day         (slw.static)            [i(64):nn]
+        COLUMN	slw_hour        (slw.static)            [i(64):nn]
+        COLUMN	slw_10min       (slw.static)            [i(64):nn]
+
+	ADD_CONTEXT(slw_yer,slw_mth,slw_dy,slw_tim,msql_offset,sys_hwaddr)
+	COLCOPY(slw_qur_row_ex,slw_text)
+	COLMAP(slw_mth,slw_mth,/01/,'Jan',slw_mth)
+	COLMAP(slw_mth,slw_mth,/02/,'Feb',slw_mth)
+	COLMAP(slw_mth,slw_mth,/03/,'Mar',slw_mth)
+	COLMAP(slw_mth,slw_mth,/04/,'Apr',slw_mth)
+	COLMAP(slw_mth,slw_mth,/05/,'May',slw_mth)
+	COLMAP(slw_mth,slw_mth,/06/,'Jun',slw_mth)
+	COLMAP(slw_mth,slw_mth,/07/,'Jul',slw_mth)
+	COLMAP(slw_mth,slw_mth,/08/,'Aug',slw_mth)
+	COLMAP(slw_mth,slw_mth,/09/,'Sep',slw_mth)
+	COLMAP(slw_mth,slw_mth,/10/,'Oct',slw_mth)
+	COLMAP(slw_mth,slw_mth,/11/,'Nov',slw_mth)
+	COLMAP(slw_mth,slw_mth,/12/,'Dec',slw_mth)
+	COLJOIN(slw_date_str,slw_mth,' ',slw_dy,' ',slw_tim,' GMT ',msql_offset,' 20',slw_yer)
+
+	COLCOPY('Slow Q Info',slw_severity)
+	COLCOPY('1',slw_sev_idx)
+	COLCOPY('Info',slw_type)
+	COLCOPY('Slow q Info',slw_label)
+	COLCOPY('SAR Utility',slw_source)
+	COLCOPY('1',apc_apc)
+
+	COLJOIN(slw_md5,slw_query,slw_qur_tim,slw_qur_lk,slw_qur_row_st,slw_qur_row_ex)
+	COLCALC(slw_md5,MD5,slw_md5)
+	COLSPLIT(slw_md5, /^((\w{7})\w{9})/, slw_md5, slw_idx)
+	COLCALC(slw_epoch,STR2TIME,slw_date_str)
+	COLCALC(slw_idx, HEX2DEC,slw_idx)
+	COLCALC(slw_qtr, TIME2QTR, slw_epoch)
+        COLCALC(slw_month, STR2MMYY, slw_date_str)
+	COLCALC(slw_30day, TIME2MONTH,slw_epoch)
+        COLCALC(slw_week, TIME2WEEK, slw_epoch)
+        COLCALC(slw_day, TIME2DAY, slw_epoch)
+        COLCALC(slw_hour, TIME2HOUR, slw_epoch)
+        COLCALC(slw_10min, TIME210MIN, slw_epoch)
+	CONSTRAIN()
+;
+
+###bin table
+
+#SAMPLE DATA
+#/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+#/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+#DELIMITER /*!*/;
+## at 4
+##130211  6:57:35 server id 1  end_log_pos 98    Start: binlog v 4, server v 5.0.45-log created 130211  6:57:35 at startup
+#ROLLBACK/*!*/;
+## at 98
+##130227 15:05:32 server id 1  end_log_pos 126   Intvar
+#SET INSERT_ID=4/*!*/;
+
+
+DEFINE TABLE	msql_bin	NAMESPACE	lin.msql.bin_logs 
+	ICON list_basic
+	LINEGRAB /\#\s+at\s+(\d+)[^\n]*\n\#((\d{2})(\d{2})(\d{2})\s+(\d+\:\d+\:\d+))\s+server\s+id\s*(\d+)\s*end_log_pos\s*(\d+)\s*Query\s+thread_id\=(\d+)\s+exec\_time\=(\d+)\s*error_code=(\d+)(.*?)(?<=\#)/
+	COLUMN	mbin_at		(mbin.static)		[i(64):nn]	AS	1
+	COLUMN	mbin_tm		(mbin.static)		[s(256):n]	AS	2
+	COLUMN	mbin_yr					[i(64):n]	AS	3
+	COLUMN	mbin_moth				[i(64):n]	AS	4
+	COLUMN	mbin_dy					[i(64):n]	AS	5
+	COLUMN	mbin_cr_tm				[s(128):n]	AS	6
+	COLUMN	mbin_ser_id	(mbin.static)		[i(64):n]	AS	7
+	COLUMN	mbin_ed_log_ps	(mbin.static)		[i(64):n]	AS	8
+	COLUMN	mbin_thred_id	(mbin.static)		[i(64):n]	AS	9
+	COLUMN	mbin_exc_time	(mbin.static)		[i(64):n]	AS	10
+	COLUMN	mbin_err_code	(mbin.static)		[i(64):n]	AS	11
+	COLUMN	mbin_query_info	(mbin.static)		[s(1024):n]	AS	12
+	COLUMN	msql_offset	(sys.static)		[s(128):n]
+	COLUMN	sys_hwaddr      (sys.static)    	[s(128):nn]	<label='Hardware Address'>
+
+	COLUMN	mbin_date_str	(mbin.static)		[s(128):nn]	<label='Time Of Observation', facet='E'> 
+	COLUMN	mbin_text	(mbin.static)		[s(2048):n]	<label='Binary Text'>
+	COLUMN	mbin_severity	(mbin.static)		[s(128):n]	<label='Binary Severity'>
+	COLUMN	mbin_sev_idx	(mbin.static)		[i(64):n]	<label='Binary Index'>	
+	COLUMN 	mbin_type 	(mbin.static)		[s(32):n]	<label='Binary Type'>
+	COLUMN	mbin_label	(mbin.static)		[s(256):n]	<label='Binary Label'>
+	COLUMN	mbin_source	(mbin.static)		[s(64):n]	<label='Binary Source'>	
+	COLUMN	mbin_mbin	(mbin.static:mbingr)	[i(64):n]	<label='Binary Grouping'>
+	
+	COLUMN	mbin_epoch       (mbin.static)          [i(64):nn]	<units='epoch', facet='E'>
+        COLUMN	mbin_idx         (mbin.static)          [i(64):nn]
+        COLUMN	mbin_md5         (mbin.static)          [s(16):nn]
+        COLUMN	mbin_qtr         (mbin.static)          [i(64):nn]
+        COLUMN	mbin_month       (mbin.static)          [i(64):nn]
+	COLUMN	mbin_30day 	(mbin.static) 		[i(64):nn]
+        COLUMN	mbin_week        (mbin.static)          [i(64):nn]
+        COLUMN	mbin_day         (mbin.static)          [i(64):nn]
+        COLUMN	mbin_hour        (mbin.static)          [i(64):nn]
+        COLUMN	mbin_10min       (mbin.static)          [i(64):nn]
+	ADD_CONTEXT(msql_offset,sys_hwaddr)
+	COLREP(/\n/g,'',mbin_query_info)
+	COLREP(/\#/,'',mbin_query_info)
+	COLREP(/SET.*?\;/,'',mbin_query_info)
+	COLREP(/ROLLBACK.*?\;/,'',mbin_query_info)
+	COLREP(/DELIMITER.*?\;/,'',mbin_query_info)
+
+	COLCOPY(mbin_query_info,mbin_text)
+	COLCOPY('BINARY LOG Info',mbin_severity)
+	COLCOPY('1',mbin_sev_idx)
+	COLCOPY('Info',mbin_type)
+	COLCOPY('Binary Log Info',mbin_label)
+	COLCOPY('SAR Utility',mbin_source)
+	COLCOPY('1',mbin_mbin)
+
+	COLMAP(mbin_moth,mbin_moth,/01/,'Jan',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/02/,'Feb',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/03/,'Mar',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/04/,'Apr',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/05/,'May',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/06/,'Jun',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/07/,'Jul',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/08/,'Aug',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/09/,'Sep',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/10/,'Oct',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/11/,'Nov',mbin_moth)
+	COLMAP(mbin_moth,mbin_moth,/12/,'Dec',mbin_moth)
+	COLJOIN(mbin_date_str,mbin_moth ,' ',mbin_dy,' ',mbin_cr_tm,' GMT ',msql_offset,' 20',mbin_yr)
+	COLJOIN(mbin_md5,mbin_at,mbin_tm,mbin_yr,mbin_moth,mbin_dy,mbin_cr_tm,mbin_ser_id ,mbin_ed_log_ps,mbin_thred_id,mbin_exc_time,mbin_err_code,mbin_query_info)
+	COLCALC(mbin_md5,MD5,mbin_md5)
+	COLSPLIT(mbin_md5, /^((\w{7})\w{9})/, mbin_md5, mbin_idx)
+	COLCALC(mbin_epoch,STR2TIME,mbin_date_str)
+	COLCALC(mbin_idx, HEX2DEC,mbin_idx)
+	COLCALC(mbin_qtr, TIME2QTR, mbin_epoch)
+        COLCALC(mbin_month, STR2MMYY, mbin_date_str)
+	COLCALC(mbin_30day, TIME2MONTH,mbin_epoch)
+        COLCALC(mbin_week, TIME2WEEK, mbin_epoch)
+        COLCALC(mbin_day, TIME2DAY, mbin_epoch)
+        COLCALC(mbin_hour, TIME2HOUR, mbin_epoch)
+        COLCALC(mbin_10min, TIME210MIN, mbin_epoch)
+	CONSTRAIN()
+;
+
+
+########################### END OF MYSQL TABLES #########################
+
+###################################################	PROTO TABLES	#####################################################
+ 
+CREATE TABLE sys_proto WITH SQL 
+	SELECT * FROM host
+#	NATURAL LEFT OUTER JOIN	mysql_tb 
+#	NATURAL LEFT OUTER JOIN apache_tb
+;		
+
+CREATE TABLE evt_proto WITH SQL 
+	SELECT evt_cpu,
+		evt_user,
+		evt_nice,
+		evt_sys,
+		evt_iowait,
+		evt_steal,
+		evt_idle,
+		sys_hwaddr,
+		evt_date_str,
+		evt_text,
+		evt_severity,
+		evt_sev_idx,
+		evt_type,
+		evt_label,
+		evt_source,
+		evt_evt,
+		evt_epoch,
+		evt_type,
+		evt_idx,
+		evt_md5,
+		evt_qtr,
+		evt_month,
+		evt_30day,
+		evt_week,
+		evt_day,
+		evt_hour,
+		evt_10min FROM cpu_utiliz
+	WHERE evt_cpu = 'all'
+;
+
+CREATE TABLE lx_memlat_proto	WITH SQL
+	SELECT avg(memlet_bk_tm) AS memlc_bk_avg,
+#	obs_date_str,
+	sys_hwaddr,
+	memlet_date_str,
+	memlet_text,
+	memlet_severity,
+	memlet_sev_idx,
+	memlet_type,
+	memlet_label,
+	memlet_source,
+	memlet_memlet
+	memlet_epoch,
+	memlet_idx,
+	memlet_md5,
+	memlet_qtr,
+	memlet_month,
+	memlet_30day,
+	memlet_week,
+	memlet_day,
+	memlet_hour,
+	memlet_10min  
+	FROM	lx_memlat
+; 
+
+CREATE TABLE mem_util_proto WITH SQL
+	SELECT memutli_kbmemfree,
+		memutli_kbmemused,
+		memutli_memused,
+		memutli_kbbuffers,
+		memutli_kbcached,
+		memutli_kbswpfree,
+		memutli_kbswpused,
+		memutli_swpused,
+		memutli_kbswpcad,
+		sys_hwaddr,
+		memutli_date_str,
+		memutli_text,
+		memutli_severity,
+		memutli_sev_idx,
+		memutli_label,
+		memutli_source,
+		memutli_memutli,
+		memutli_epoch,
+		memutli_type,
+		memutli_idx,
+		memutli_md5,
+		memutli_qtr,
+		memutli_month,
+		memutli_30day,
+		memutli_week,
+		memutli_day,
+		memutli_hour,
+		memutli_10min
+	FROM mem_util
+;
+
+CREATE TABLE mrep_proto WITH SQL 
+	SELECT * FROM	mysql_report
+	NATURAL LEFT OUTER JOIN mysql_rt_two 
+	NATURAL LEFT OUTER JOIN mysql_rt_three 
+	NATURAL LEFT OUTER JOIN mysql_rt_four
+	NATURAL LEFT OUTER JOIN mysql_rt_five 
+	NATURAL LEFT OUTER JOIN mysql_rt_six
+	NATURAL LEFT OUTER JOIN mysql_rt_seven 
+#	NATURAL LEFT OUTER JOIN mysql_rt_eight 
+;	 
+
+###############################################################
+
